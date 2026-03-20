@@ -1,0 +1,23 @@
+# Script Usage
+
+- Entry point: `scripts/manage_forced_photometry.py`
+- Subcommands:
+  - `submit`
+  - `status`
+  - `fetch`
+- Core modules:
+  - `src/tns_project/core/ztf_forced_photometry.py`
+  - `src/tns_project/utils/plotting.py`
+- Typical outputs:
+  - `*_forced_photometry.json`
+  - `*_status_summary.png`
+  - `*_forced_lightcurve.png`
+- Runtime behavior:
+  - `submit` reuses an existing pending request when the same coordinates are already queued.
+  - `status --refresh` calls the live monitor/check path.
+  - `fetch` reads local cached `ztf_forced_photometry.txt` files and plots them.
+- Environment requirements:
+  - `ZTF_EMAIL`, `ZTF_PASSWORD`, `ZTF_FP_AUTH_USER`, `ZTF_FP_AUTH_PASS` for live submission/refresh.
+- Good test targets in this workspace:
+  - `AT 2026fkv` for `fetch`
+  - `SN 2026fvx` for duplicate-safe `submit`

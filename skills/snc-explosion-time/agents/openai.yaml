@@ -1,0 +1,4 @@
+interface:
+  display_name: "SNC Explosion Time"
+  short_description: "Predict explosion time with SN Clock visuals"
+  default_prompt: "Use $snc-explosion-time to predict explosion time and generate SN Clock visual outputs."

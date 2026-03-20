@@ -1,0 +1,4 @@
+interface:
+  display_name: "SNC Host Context"
+  short_description: "Crossmatch host environment and contamination"
+  default_prompt: "Use $snc-host-context to crossmatch host context and generate environment summary visuals."

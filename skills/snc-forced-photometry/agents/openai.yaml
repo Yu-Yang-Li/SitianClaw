@@ -1,0 +1,4 @@
+interface:
+  display_name: "SNC Forced Photometry"
+  short_description: "Submit and monitor ZTF forced photometry"
+  default_prompt: "Use $snc-forced-photometry to submit or monitor ZTF forced photometry and generate status plots."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "SNC Observability"
+  short_description: "Check observability windows with altitude plots"
+  default_prompt: "Use $snc-observability to evaluate observability and generate altitude plots for a target."

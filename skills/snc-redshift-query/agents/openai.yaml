@@ -1,0 +1,4 @@
+interface:
+  display_name: "SNC Redshift Query"
+  short_description: "Resolve host redshift and consensus with plots"
+  default_prompt: "Use $snc-redshift-query to resolve host redshift, host context, and consensus plots."

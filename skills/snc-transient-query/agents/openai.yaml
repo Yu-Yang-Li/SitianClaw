@@ -1,0 +1,4 @@
+interface:
+  display_name: "SNC Transient Query"
+  short_description: "Query TNS and broker sources with plots"
+  default_prompt: "Use $snc-transient-query to query recent TNS or broker sources and generate summary plots."
