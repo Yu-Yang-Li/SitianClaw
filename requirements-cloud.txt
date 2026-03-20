@@ -7,3 +7,5 @@ astropy
 astroplan
 astroquery
 lxml
+scipy
+catboost

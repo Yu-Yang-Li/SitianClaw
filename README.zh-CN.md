@@ -38,6 +38,7 @@ install https://github.com/<org>/SitianClaw
 - `snc-forced-phot-fetch`
 - `snc-observability-3day`
 - `snc-host-context`
+- `snc-explosion-time`
 
 它们只依赖公开上游服务和 `requirements-cloud.txt` 里的标准 Python 包。
 
@@ -47,7 +48,6 @@ install https://github.com/<org>/SitianClaw
 
 - `snc-forced-photometry`
 - `snc-observability`
-- `snc-explosion-time`
 
 ## 其他补充技能
 
@@ -55,7 +55,7 @@ install https://github.com/<org>/SitianClaw
 - `snc-redshift-query`：单目标宿主红移共识查询
 - `snc-forced-photometry`：旧版一体化强制测光封装
 - `snc-observability`：旧版通用可观测性封装
-- `snc-explosion-time`：基于本地 SN Clock 的爆发时间预测
+- `snc-explosion-time`：内置模型的便携 SN Clock 爆发时间预测
 - `snc-host-context`：宿主环境交叉匹配与污染风险摘要
 
 ## 运行前提
@@ -81,6 +81,7 @@ python scripts/cloud_smoke_test.py --name "SN 2026fvx"
 - `snc-forced-phot-fetch`
 - `snc-observability-3day`
 - `snc-candidate-crawl-3day`
+- `snc-explosion-time`
 
 如果你也想把 shortlist 一起测掉，可以运行：
 
@@ -101,6 +102,12 @@ python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --includ
 ```
 
 其中 `snc-forced-phot-submit` 会以 `--dry-run` 方式运行，所以这条烟测只验证提交流程本身，不会真的向 ZTF 发起 live 请求。
+
+如果你也想把便携版 SN Clock 爆发时间预测一起测掉，可以运行：
+
+```text
+python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --include-host-context --include-forced-phot --include-explosion-time
+```
 
 ## 仓库结构
 

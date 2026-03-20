@@ -38,6 +38,7 @@ These skills are already GitHub-only portable and do not require a local `C:\SNC
 - `snc-forced-phot-fetch`
 - `snc-observability-3day`
 - `snc-host-context`
+- `snc-explosion-time`
 
 They rely only on public upstream services plus standard Python packages listed in `requirements-cloud.txt`.
 
@@ -47,7 +48,6 @@ These skills still depend on the full SNC workspace, local caches, credentials, 
 
 - `snc-forced-photometry`
 - `snc-observability`
-- `snc-explosion-time`
 
 ## Additional Skills
 
@@ -55,7 +55,7 @@ These skills still depend on the full SNC workspace, local caches, credentials, 
 - `snc-redshift-query`: host-redshift consensus lookup for a single target
 - `snc-forced-photometry`: legacy combined forced-photometry wrapper
 - `snc-observability`: legacy generic observability wrapper
-- `snc-explosion-time`: local SN Clock explosion-time prediction
+- `snc-explosion-time`: portable SN Clock explosion-time prediction with bundled models
 - `snc-host-context`: host-environment crossmatch and contamination summary
 
 ## Runtime Requirements
@@ -81,6 +81,7 @@ The script clears `SNC_REPO_ROOT` and `PYTHONPATH`, then runs:
 - `snc-forced-phot-fetch`
 - `snc-observability-3day`
 - `snc-candidate-crawl-3day`
+- `snc-explosion-time`
 
 To include the portable shortlist workflow as well:
 
@@ -101,6 +102,12 @@ python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --includ
 ```
 
 The smoke test runs `snc-forced-phot-submit` in `--dry-run` mode, so it validates the portable submission path without creating a live ZTF request.
+
+To also include the portable SN Clock explosion-time path:
+
+```text
+python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --include-host-context --include-forced-phot --include-explosion-time
+```
 
 ## Layout
 

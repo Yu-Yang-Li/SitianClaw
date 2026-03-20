@@ -47,6 +47,11 @@ def main() -> int:
         help="Also run the portable snc-forced-phot-monitor and snc-forced-phot-fetch smoke tests with bundled sample assets.",
     )
     parser.add_argument(
+        "--include-explosion-time",
+        action="store_true",
+        help="Also run the portable snc-explosion-time smoke test.",
+    )
+    parser.add_argument(
         "--output-dir",
         default=None,
         help="Directory for smoke-test artifacts. Defaults to <repo>/data/cloud_smoke_test.",
@@ -137,6 +142,15 @@ def main() -> int:
             str(repo_root / "skills" / "snc-forced-phot-fetch" / "assets" / "sample_ztf_forced_photometry.txt"),
             "--output-dir",
             str(output_dir / "forced_phot_fetch"),
+        ]
+    if args.include_explosion_time:
+        commands["explosion_time"] = [
+            sys.executable,
+            str(repo_root / "skills" / "snc-explosion-time" / "scripts" / "predict_explosion_time.py"),
+            "--name",
+            args.name,
+            "--output-dir",
+            str(output_dir / "explosion_time"),
         ]
 
     results = {name: _run(command, repo_root) for name, command in commands.items()}
