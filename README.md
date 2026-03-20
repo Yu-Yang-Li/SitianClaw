@@ -64,6 +64,20 @@ These skills still depend on the full SNC workspace, local caches, credentials, 
 - The local-dependent subset still requires the full SNC science workspace, local caches, credentials, or local models.
 - The agent session must allow launching Python and writing output artifacts.
 
+## GitHub-Only Smoke Test
+
+After cloning the repository and installing `requirements-cloud.txt`, you can verify the cloud-ready subset without any local SNC workspace:
+
+```text
+python scripts/cloud_smoke_test.py --name "SN 2026fvx"
+```
+
+The script clears `SNC_REPO_ROOT` and `PYTHONPATH`, then runs:
+
+- `snc-redshift-query`
+- `snc-observability-3day`
+- `snc-candidate-crawl-3day`
+
 ## Layout
 
 ```text

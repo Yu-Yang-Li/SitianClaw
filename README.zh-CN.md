@@ -64,6 +64,20 @@ install https://github.com/<org>/SitianClaw
 - 对于“仍依赖本地 SNC”的那批，依然需要完整的 SNC 科学代码、缓存、凭据或本地模型。
 - 调用环境需要允许启动 Python，并允许写入 JSON / PNG / HTML 等产物。
 
+## GitHub-only 烟测
+
+clone 仓库并安装 `requirements-cloud.txt` 后，可以直接运行下面这条命令验证“当前已云端可用”的那批 skill 完全不依赖本地 SNC：
+
+```text
+python scripts/cloud_smoke_test.py --name "SN 2026fvx"
+```
+
+这个脚本会主动清掉 `SNC_REPO_ROOT` 和 `PYTHONPATH`，然后依次执行：
+
+- `snc-redshift-query`
+- `snc-observability-3day`
+- `snc-candidate-crawl-3day`
+
 ## 仓库结构
 
 ```text
