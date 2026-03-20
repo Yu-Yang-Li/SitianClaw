@@ -22,6 +22,7 @@ from _snc_skill_support import (
 )
 
 REPO_ROOT = bootstrap_repo_root(__file__)
+from src.tns_project.config.settings import REDSHIFT_THRESHOLD  # noqa: E402
 from src.tns_project.config.astronomical_config import get_astronomical_config  # noqa: E402
 from src.tns_project.core.astronomical_processor import (  # noqa: E402
     _apply_discovery_date_filter,
@@ -157,7 +158,12 @@ def main() -> int:
     parser.add_argument("--skip-ztf", action="store_true", help="Skip the ZTF broker component.")
     parser.add_argument("--skip-lsst", action="store_true", help="Skip the LSST broker component.")
     parser.add_argument("--recent-days", type=int, default=3, help="Recent-window filter before host-redshift enrichment.")
-    parser.add_argument("--nearby-redshift-max", type=float, default=0.05, help="Nearby-universe redshift ceiling for the candidate pool.")
+    parser.add_argument(
+        "--nearby-redshift-max",
+        type=float,
+        default=REDSHIFT_THRESHOLD,
+        help="Nearby-universe redshift ceiling for the candidate pool. Defaults to the SNC workspace REDSHIFT_THRESHOLD.",
+    )
     parser.add_argument("--output-dir", help="Directory for JSON, CSV, and plots.")
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging.")
     args = parser.parse_args()
@@ -205,7 +211,7 @@ def main() -> int:
 
     payload: dict[str, Any] = {
         "skill": "snc-candidate-crawl-3day",
-        "workspace_alignment": "Matches DataCycleHandler._fetch_tns_data(), then binds the recent candidate pool to host-redshift resolution for nearby-universe triage.",
+        "workspace_alignment": "Matches DataCycleHandler._fetch_tns_data(), then binds the recent candidate pool to host-redshift resolution using the current SNC nearby-universe threshold.",
         "parameters": {
             "include_ztf": not args.skip_ztf,
             "include_lsst": not args.skip_lsst,

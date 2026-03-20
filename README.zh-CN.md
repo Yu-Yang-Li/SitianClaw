@@ -18,7 +18,7 @@ install https://github.com/<org>/SitianClaw
 
 ## 优先使用的工作流技能
 
-- `snc-candidate-crawl-3day`：抓取工作区当前使用的 3 天 TNS + ZTF + LSST 候选池，并自动绑定近邻红移上下文
+- `snc-candidate-crawl-3day`：抓取工作区当前使用的 3 天 TNS + ZTF + LSST 候选池，并按工作区默认 `z<=0.025` 自动绑定近邻红移上下文
 - `snc-candidate-screen-3day`：对 3 天候选池执行 SNC 严格 shortlist 筛选
 - `snc-forced-phot-submit`：提交新的 ZTF 强制测光请求
 - `snc-forced-phot-monitor`：监控待处理请求并刷新缓存/邮箱状态

@@ -1,11 +1,11 @@
 ---
 name: snc-candidate-crawl-3day
-description: Fetch the SNC workspace 3-day transient candidate pool by calling the same TNS plus ZTF plus LSST broker crawl used by the live data cycle, then bind the recent pool to host-redshift resolution and produce a nearby-universe candidate view. Use when Codex needs recent intake candidates with nearby redshift context rather than a pure raw list.
+description: Fetch the SNC workspace 3-day transient candidate pool by calling the same TNS plus ZTF plus LSST broker crawl used by the live data cycle, then bind the recent pool to host-redshift resolution and produce a nearby-universe candidate view using the current workspace threshold. Use when Codex needs recent intake candidates with nearby redshift context rather than a pure raw list.
 ---
 
 # SNC Candidate Crawl 3day
 
-Fetch the same intake pool that the SNC workspace uses, but do not stop at a raw list. This skill mirrors `DataCycleHandler._fetch_tns_data()`, then resolves host redshift for the recent subset so the returned pool is already biased toward nearby-universe triage.
+Fetch the same intake pool that the SNC workspace uses, but do not stop at a raw list. This skill mirrors `DataCycleHandler._fetch_tns_data()`, then resolves host redshift for the recent subset so the returned pool is already biased toward nearby-universe triage with the same nearby threshold the workspace uses.
 
 ## Quick Start
 
@@ -26,7 +26,7 @@ python skills/snc-candidate-crawl-3day/scripts/crawl_candidates_3day.py --output
    - `ztf_max_candidates=300`
    - `lsst_hours_back=72`
    - `lsst_max_candidates=200`
-4. Resolve host redshift for the recent subset and build a nearby candidate pool with `z <= 0.05` by default.
+4. Resolve host redshift for the recent subset and build a nearby candidate pool with the workspace default `z <= 0.025` unless the user overrides it.
 5. Save both structured output and quick-look visualizations.
 
 ## Outputs
