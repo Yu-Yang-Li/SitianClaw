@@ -52,6 +52,11 @@ def main() -> int:
         help="Also run the portable snc-explosion-time smoke test.",
     )
     parser.add_argument(
+        "--include-legacy",
+        action="store_true",
+        help="Also run the portable legacy wrappers snc-forced-photometry and snc-observability.",
+    )
+    parser.add_argument(
         "--output-dir",
         default=None,
         help="Directory for smoke-test artifacts. Defaults to <repo>/data/cloud_smoke_test.",
@@ -151,6 +156,51 @@ def main() -> int:
             args.name,
             "--output-dir",
             str(output_dir / "explosion_time"),
+        ]
+    if args.include_legacy:
+        commands["legacy_forced_phot_submit"] = [
+            sys.executable,
+            str(repo_root / "skills" / "snc-forced-photometry" / "scripts" / "manage_forced_photometry.py"),
+            "submit",
+            "--name",
+            args.name,
+            "--dry-run",
+            "--cache-dir",
+            str(output_dir / "legacy_forced_phot_submit_cache"),
+            "--output-dir",
+            str(output_dir / "legacy_forced_phot_submit"),
+        ]
+        commands["legacy_forced_phot_monitor"] = [
+            sys.executable,
+            str(repo_root / "skills" / "snc-forced-photometry" / "scripts" / "manage_forced_photometry.py"),
+            "status",
+            "--name",
+            "SN 2026fvx",
+            "--cache-dir",
+            str(repo_root / "skills" / "snc-forced-phot-monitor" / "assets" / "sample_cache"),
+            "--output-dir",
+            str(output_dir / "legacy_forced_phot_monitor"),
+        ]
+        commands["legacy_forced_phot_fetch"] = [
+            sys.executable,
+            str(repo_root / "skills" / "snc-forced-photometry" / "scripts" / "manage_forced_photometry.py"),
+            "fetch",
+            "--name",
+            "AT 2026fkv",
+            "--file",
+            str(repo_root / "skills" / "snc-forced-phot-fetch" / "assets" / "sample_ztf_forced_photometry.txt"),
+            "--output-dir",
+            str(output_dir / "legacy_forced_phot_fetch"),
+        ]
+        commands["legacy_observability"] = [
+            sys.executable,
+            str(repo_root / "skills" / "snc-observability" / "scripts" / "query_observability.py"),
+            "--name",
+            args.name,
+            "--date",
+            "2026-03-20",
+            "--output-dir",
+            str(output_dir / "legacy_observability"),
         ]
 
     results = {name: _run(command, repo_root) for name, command in commands.items()}

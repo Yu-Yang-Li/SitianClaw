@@ -36,18 +36,13 @@ These skills are already GitHub-only portable and do not require a local `C:\SNC
 - `snc-forced-phot-submit`
 - `snc-forced-phot-monitor`
 - `snc-forced-phot-fetch`
+- `snc-forced-photometry`
+- `snc-observability`
 - `snc-observability-3day`
 - `snc-host-context`
 - `snc-explosion-time`
 
 They rely only on public upstream services plus standard Python packages listed in `requirements-cloud.txt`.
-
-## Still Local-Dependent
-
-These skills still depend on the full SNC workspace, local caches, credentials, or local models and are not yet pure cloud skills:
-
-- `snc-forced-photometry`
-- `snc-observability`
 
 ## Additional Skills
 
@@ -60,8 +55,8 @@ These skills still depend on the full SNC workspace, local caches, credentials, 
 
 ## Runtime Requirements
 
-- For the cloud-ready subset, only standard Python packages are needed; install `requirements-cloud.txt` if your agent runtime does not auto-resolve imports.
-- The local-dependent subset still requires the full SNC science workspace, local caches, credentials, or local models.
+- All bundled skills now run from the GitHub repository itself; install `requirements-cloud.txt` if your agent runtime does not auto-resolve imports.
+- Live forced-phot submission or refresh still needs real ZTF credentials, but the code path no longer depends on a local SNC checkout.
 - The agent session must allow launching Python and writing output artifacts.
 
 ## GitHub-Only Smoke Test
@@ -107,6 +102,12 @@ To also include the portable SN Clock explosion-time path:
 
 ```text
 python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --include-host-context --include-forced-phot --include-explosion-time
+```
+
+To also verify the portable legacy wrappers:
+
+```text
+python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --include-host-context --include-forced-phot --include-explosion-time --include-legacy
 ```
 
 ## Layout

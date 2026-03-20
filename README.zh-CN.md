@@ -36,18 +36,13 @@ install https://github.com/<org>/SitianClaw
 - `snc-forced-phot-submit`
 - `snc-forced-phot-monitor`
 - `snc-forced-phot-fetch`
+- `snc-forced-photometry`
+- `snc-observability`
 - `snc-observability-3day`
 - `snc-host-context`
 - `snc-explosion-time`
 
 它们只依赖公开上游服务和 `requirements-cloud.txt` 里的标准 Python 包。
-
-## 仍依赖本地 SNC 的技能
-
-下面这些暂时还依赖完整工作区、本地缓存、账号凭据或本地模型，还不是纯云端 skill：
-
-- `snc-forced-photometry`
-- `snc-observability`
 
 ## 其他补充技能
 
@@ -60,8 +55,8 @@ install https://github.com/<org>/SitianClaw
 
 ## 运行前提
 
-- 对于“当前已云端可用”的那批，只需要标准 Python 依赖；如果运行环境不会自动补装依赖，请安装 `requirements-cloud.txt`。
-- 对于“仍依赖本地 SNC”的那批，依然需要完整的 SNC 科学代码、缓存、凭据或本地模型。
+- 现在整套仓库里的 skill 都可以直接依托 GitHub 仓库本身运行；如果运行环境不会自动补装依赖，请安装 `requirements-cloud.txt`。
+- 如果要做 live 的强制测光提交或状态刷新，仍然需要真实 ZTF 凭据，但这已经不再要求本地 SNC 完整工作区。
 - 调用环境需要允许启动 Python，并允许写入 JSON / PNG / HTML 等产物。
 
 ## GitHub-only 烟测
@@ -107,6 +102,12 @@ python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --includ
 
 ```text
 python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --include-host-context --include-forced-phot --include-explosion-time
+```
+
+如果你也想把两个 legacy 入口 `snc-forced-photometry` 和 `snc-observability` 一并验证，可以运行：
+
+```text
+python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --include-host-context --include-forced-phot --include-explosion-time --include-legacy
 ```
 
 ## 仓库结构

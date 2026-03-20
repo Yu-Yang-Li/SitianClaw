@@ -5,20 +5,20 @@ description: Submit, monitor, and fetch ZTF forced-photometry jobs through the e
 
 # SNC Forced Photometry
 
-Use this skill to work with the current ZTF forced-photometry client directly from the workspace.
+Use this skill to work with the portable GitHub-only ZTF forced-photometry workflow from a single combined entry point.
 
 ## Quick Start
 
-- Run `python skills/snc-forced-photometry/scripts/manage_forced_photometry.py fetch --name "AT 2026fkv"`.
-- Run `python skills/snc-forced-photometry/scripts/manage_forced_photometry.py status --name "SN 2026fvx"`.
-- Run `python skills/snc-forced-photometry/scripts/manage_forced_photometry.py submit --name "SN 2026fvx" --incremental`.
-- When running the mounted copy from `~/.codex/skills`, start inside the SNC workspace root or set `SNC_REPO_ROOT`; the script also needs a writable shell session that is allowed to launch Python.
+- Run `python skills/snc-forced-photometry/scripts/manage_forced_photometry.py fetch --name "AT 2026fkv" --file skills/snc-forced-phot-fetch/assets/sample_ztf_forced_photometry.txt`.
+- Run `python skills/snc-forced-photometry/scripts/manage_forced_photometry.py status --name "SN 2026fvx" --cache-dir skills/snc-forced-phot-monitor/assets/sample_cache`.
+- Run `python skills/snc-forced-photometry/scripts/manage_forced_photometry.py submit --name "SN 2026fvx" --dry-run`.
+- This portable wrapper runs from a clean GitHub clone and writes artifacts locally without needing the full SNC workspace.
 
 ## Workflow
 
-1. Use `fetch` when you already have a cached `ztf_forced_photometry.txt`.
+1. Use `fetch` when you already have a downloaded `ztf_forced_photometry.txt`, or point at the bundled sample asset for smoke tests.
 2. Use `status` for queue monitoring and add `--refresh` only when you want to hit the live check path.
-3. Use `submit` when you truly want to queue work; the wrapped client will reuse an existing pending request for duplicate coordinates.
+3. Use `submit` with `--dry-run` for cloud validation, or provide real ZTF credentials for a live submit.
 4. Read the JSON artifact first, then inspect the generated status or lightcurve plot.
 
 ## Outputs
@@ -29,4 +29,4 @@ Use this skill to work with the current ZTF forced-photometry client directly fr
 
 ## References
 
-- Read [references/script-usage.md](references/script-usage.md) for subcommand behavior, env requirements, and safe test targets.
+- Read [references/script-usage.md](references/script-usage.md) for subcommand behavior, portable env requirements, and safe test targets.
