@@ -1,0 +1,45 @@
+{
+  "ztf_normal_SN 2026fvx_183.742221_63.787892_1773839552": {
+    "request_id": "ztf_normal_SN 2026fvx_183.742221_63.787892_1773839552",
+    "source_name": "SN 2026fvx",
+    "ra": 183.7422208333333,
+    "dec": 63.78789166666667,
+    "jd_start": 2461087.48611,
+    "jd_end": 2461118.050341242,
+    "status": "timeout",
+    "submit_time": "2026-03-18T13:12:32.087860+00:00",
+    "complete_time": "2026-03-19T07:49:40.238910+00:00",
+    "origin": "api",
+    "data_points": 0,
+    "failure_reason": "no_ztf_coverage",
+    "request_type": "initial"
+  },
+  "ztf_normal_AT 2026fkv_206.412800_-16.446197_1773462302": {
+    "request_id": "ztf_normal_AT 2026fkv_206.412800_-16.446197_1773462302",
+    "source_name": "AT 2026fkv",
+    "ra": 206.41279999999998,
+    "dec": -16.44619722222222,
+    "jd_start": 2461082.018587963,
+    "jd_end": 2461113.683961694,
+    "status": "completed",
+    "submit_time": "2026-03-14T04:25:02.115950+00:00",
+    "complete_time": "2026-03-16T02:56:27.751939+00:00",
+    "origin": "api",
+    "data_file": "AT_2026fkv/ztf_forced_photometry.txt",
+    "data_points": 22,
+    "request_type": "initial"
+  },
+  "ztf_normal_AT 2026abc_123.456700_12.345600_1773900000": {
+    "request_id": "ztf_normal_AT 2026abc_123.456700_12.345600_1773900000",
+    "source_name": "AT 2026abc",
+    "ra": 123.4567,
+    "dec": 12.3456,
+    "jd_start": 2461118.0,
+    "jd_end": 2461120.0,
+    "status": "submitted",
+    "submit_time": "2026-03-19T10:00:00+00:00",
+    "origin": "api",
+    "data_points": 0,
+    "request_type": "initial"
+  }
+}

@@ -3,25 +3,20 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
+import sys
 from pathlib import Path
 
 import matplotlib
 
 matplotlib.use("Agg")
 
-from _snc_skill_support import (
-    bootstrap_repo_root,
-    dataframe_records,
-    ensure_output_dir,
-    json_safe,
-    safe_slug,
-    write_json,
-)
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.append(str(REPO_ROOT))
 
-REPO_ROOT = bootstrap_repo_root(__file__)
-from src.tns_project.core.ztf_forced_photometry import ZTFForcedPhotometryClient  # noqa: E402
-from src.tns_project.utils.plotting import AstronomicalPlotter  # noqa: E402
+from sitianclaw_runtime.forced_phot import portable_cache_dir, read_forced_photometry_file, resolve_forced_photometry_path  # noqa: E402
+from sitianclaw_runtime.runtime import dataframe_records, ensure_output_dir, json_safe, safe_slug, write_json  # noqa: E402
+from sitianclaw_runtime.transients import plot_lightcurve  # noqa: E402
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -34,45 +29,49 @@ def _setup_logging(verbose: bool) -> None:
 def _lightcurve_plot(source_name: str, photometry_df, output_path: Path) -> Path | None:
     if photometry_df is None or photometry_df.empty:
         return None
-    plotter = AstronomicalPlotter(output_dir=str(output_path.parent))
-    generated = plotter.plot_lightcurve(
-        tns_name=source_name,
-        ztf_data=photometry_df,
-        save_path=str(output_path),
-        time_window_days=180,
-        use_days_ago=False,
+    generated = plot_lightcurve(
+        target_name=source_name,
+        frames=[photometry_df],
+        output_path=output_path,
+        title_prefix="Forced Photometry",
     )
     return Path(generated) if generated else None
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Load downloaded ZTF forced photometry from the SNC workspace cache.")
-    parser.add_argument("--name", required=True, help="Source name.")
+    parser = argparse.ArgumentParser(description="Load downloaded ZTF forced photometry from a portable cache or explicit file.")
+    parser.add_argument("--name", help="Source name.")
+    parser.add_argument("--file", help="Explicit forced-photometry text file path.")
+    parser.add_argument("--cache-dir", help="Portable cache directory. Defaults to <repo>/data/ztf_forced_cache.")
     parser.add_argument("--output-dir", help="Directory for JSON and plots.")
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging.")
     args = parser.parse_args()
 
     _setup_logging(args.verbose)
-    output_dir = ensure_output_dir(REPO_ROOT, "snc-forced-phot-fetch", args.name, args.output_dir)
-    os.chdir(REPO_ROOT)
-
-    client = ZTFForcedPhotometryClient(cache_dir=str(REPO_ROOT / "data" / "ztf_forced_cache"))
-    photometry_df, data_path = client.get_photometry_for_source({"tns_name": args.name})
+    target_name = args.name or (Path(args.file).stem if args.file else "forced-phot")
+    output_dir = ensure_output_dir(REPO_ROOT, "snc-forced-phot-fetch", target_name, args.output_dir)
+    cache_dir = portable_cache_dir(REPO_ROOT, args.cache_dir)
+    data_path = resolve_forced_photometry_path(cache_dir, source_name=args.name, explicit_file=args.file)
+    if data_path is None:
+        raise SystemExit("Need --file or a source name with a matching portable cache entry.")
+    photometry_df, loaded_path = read_forced_photometry_file(data_path)
     if photometry_df is None or photometry_df.empty:
-        raise SystemExit(f"No downloaded forced photometry found for {args.name}.")
+        raise SystemExit(f"No usable forced photometry found at {data_path}.")
 
     plot_path = _lightcurve_plot(
-        args.name,
+        target_name,
         photometry_df,
-        output_dir / f"{safe_slug(args.name)}_forced_lightcurve.png",
+        output_dir / f"{safe_slug(target_name)}_forced_lightcurve.png",
     )
 
     payload = {
         "skill": "snc-forced-phot-fetch",
-        "workspace_alignment": "Matches the fetch stage of the SNC ZTF forced-photometry workflow.",
+        "workspace_alignment": "Matches the fetch stage of the SNC ZTF forced-photometry workflow with a portable cache or explicit file.",
         "action": "fetch",
         "name": args.name,
-        "data_path": data_path,
+        "file": args.file,
+        "cache_dir": str(cache_dir),
+        "data_path": loaded_path,
         "photometry_summary": {
             "rows": int(len(photometry_df)),
             "mjd_min": float(photometry_df["mjd"].min()),
@@ -87,7 +86,7 @@ def main() -> int:
         },
         "artifact": str(plot_path) if plot_path is not None else None,
     }
-    json_path = write_json(output_dir / f"{safe_slug(args.name)}_forced_phot_fetch.json", payload)
+    json_path = write_json(output_dir / f"{safe_slug(target_name)}_forced_phot_fetch.json", payload)
     payload["json_path"] = str(json_path)
     print(json.dumps(json_safe(payload), ensure_ascii=False, indent=2))
     return 0

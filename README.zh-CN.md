@@ -33,6 +33,8 @@ install https://github.com/<org>/SitianClaw
 - `snc-candidate-crawl-3day`
 - `snc-candidate-screen-3day`
 - `snc-redshift-query`
+- `snc-forced-phot-monitor`
+- `snc-forced-phot-fetch`
 - `snc-observability-3day`
 - `snc-host-context`
 
@@ -43,8 +45,6 @@ install https://github.com/<org>/SitianClaw
 下面这些暂时还依赖完整工作区、本地缓存、账号凭据或本地模型，还不是纯云端 skill：
 
 - `snc-forced-phot-submit`
-- `snc-forced-phot-monitor`
-- `snc-forced-phot-fetch`
 - `snc-forced-photometry`
 - `snc-observability`
 - `snc-explosion-time`
@@ -76,6 +76,8 @@ python scripts/cloud_smoke_test.py --name "SN 2026fvx"
 
 - `snc-transient-query`
 - `snc-redshift-query`
+- `snc-forced-phot-monitor`
+- `snc-forced-phot-fetch`
 - `snc-observability-3day`
 - `snc-candidate-crawl-3day`
 
@@ -89,6 +91,12 @@ python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen
 
 ```text
 python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --include-host-context
+```
+
+如果你也想把强制测光的 monitor/fetch 两个纯仓库样例路径一起测掉，可以运行：
+
+```text
+python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --include-host-context --include-forced-phot
 ```
 
 ## 仓库结构

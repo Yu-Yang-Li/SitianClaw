@@ -42,6 +42,11 @@ def main() -> int:
         help="Also run the portable snc-host-context smoke test with photometry queries disabled.",
     )
     parser.add_argument(
+        "--include-forced-phot",
+        action="store_true",
+        help="Also run the portable snc-forced-phot-monitor and snc-forced-phot-fetch smoke tests with bundled sample assets.",
+    )
+    parser.add_argument(
         "--output-dir",
         default=None,
         help="Directory for smoke-test artifacts. Defaults to <repo>/data/cloud_smoke_test.",
@@ -100,6 +105,27 @@ def main() -> int:
             "--skip-photometry",
             "--output-dir",
             str(output_dir / "host_context"),
+        ]
+    if args.include_forced_phot:
+        commands["forced_phot_monitor"] = [
+            sys.executable,
+            str(repo_root / "skills" / "snc-forced-phot-monitor" / "scripts" / "monitor_forced_phot.py"),
+            "--name",
+            "SN 2026fvx",
+            "--cache-dir",
+            str(repo_root / "skills" / "snc-forced-phot-monitor" / "assets" / "sample_cache"),
+            "--output-dir",
+            str(output_dir / "forced_phot_monitor"),
+        ]
+        commands["forced_phot_fetch"] = [
+            sys.executable,
+            str(repo_root / "skills" / "snc-forced-phot-fetch" / "scripts" / "fetch_forced_phot.py"),
+            "--name",
+            "AT 2026fkv",
+            "--file",
+            str(repo_root / "skills" / "snc-forced-phot-fetch" / "assets" / "sample_ztf_forced_photometry.txt"),
+            "--output-dir",
+            str(output_dir / "forced_phot_fetch"),
         ]
 
     results = {name: _run(command, repo_root) for name, command in commands.items()}

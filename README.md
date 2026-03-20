@@ -33,6 +33,8 @@ These skills are already GitHub-only portable and do not require a local `C:\SNC
 - `snc-candidate-crawl-3day`
 - `snc-candidate-screen-3day`
 - `snc-redshift-query`
+- `snc-forced-phot-monitor`
+- `snc-forced-phot-fetch`
 - `snc-observability-3day`
 - `snc-host-context`
 
@@ -43,8 +45,6 @@ They rely only on public upstream services plus standard Python packages listed 
 These skills still depend on the full SNC workspace, local caches, credentials, or local models and are not yet pure cloud skills:
 
 - `snc-forced-phot-submit`
-- `snc-forced-phot-monitor`
-- `snc-forced-phot-fetch`
 - `snc-forced-photometry`
 - `snc-observability`
 - `snc-explosion-time`
@@ -76,6 +76,8 @@ The script clears `SNC_REPO_ROOT` and `PYTHONPATH`, then runs:
 
 - `snc-transient-query`
 - `snc-redshift-query`
+- `snc-forced-phot-monitor`
+- `snc-forced-phot-fetch`
 - `snc-observability-3day`
 - `snc-candidate-crawl-3day`
 
@@ -89,6 +91,12 @@ To also include the portable host-context check against public catalogs:
 
 ```text
 python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --include-host-context
+```
+
+To also include the portable forced-phot monitor and fetch skills using bundled sample assets:
+
+```text
+python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --include-host-context --include-forced-phot
 ```
 
 ## Layout

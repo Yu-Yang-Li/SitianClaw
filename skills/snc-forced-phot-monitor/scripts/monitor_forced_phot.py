@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -12,19 +12,19 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from _snc_skill_support import (
-    bootstrap_repo_root,
-    ensure_output_dir,
-    find_requests_by_name,
-    json_safe,
-    load_request_cache,
-    safe_slug,
-    write_json,
-)
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.append(str(REPO_ROOT))
 
-REPO_ROOT = bootstrap_repo_root(__file__)
-from src.tns_project.core.ztf_email_monitor import ZTFEmailMonitor  # noqa: E402
-from src.tns_project.core.ztf_forced_photometry import ZTFForcedPhotometryClient  # noqa: E402
+from sitianclaw_runtime.forced_phot import (  # noqa: E402
+    find_requests_by_id,
+    find_requests_by_name,
+    load_request_records,
+    portable_cache_dir,
+    refresh_request_statuses,
+    status_counts,
+)
+from sitianclaw_runtime.runtime import ensure_output_dir, json_safe, safe_slug, write_json  # noqa: E402
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -33,21 +33,10 @@ def _setup_logging(verbose: bool) -> None:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
 
-
-def _find_requests_by_id(request_id: str | None) -> list[dict[str, Any]]:
-    if not request_id:
-        return []
-    return [row for row in load_request_cache(REPO_ROOT) if row.get("request_id") == request_id]
-
-
 def _status_plot(rows: list[dict[str, Any]], output_path: Path, title: str) -> Path | None:
     if not rows:
         return None
-    counts: dict[str, int] = {}
-    for row in rows:
-        status = str(row.get("status") or "unknown").lower()
-        counts[status] = counts.get(status, 0) + 1
-
+    counts = status_counts(rows)
     labels = list(counts.keys())
     values = [counts[label] for label in labels]
     fig, ax = plt.subplots(figsize=(7.5, 4))
@@ -64,13 +53,14 @@ def _status_plot(rows: list[dict[str, Any]], output_path: Path, title: str) -> P
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Refresh and inspect ZTF forced-photometry request status.")
+    parser = argparse.ArgumentParser(description="Refresh and inspect portable ZTF forced-photometry request caches.")
     parser.add_argument("--name", help="Filter by source name.")
     parser.add_argument("--request-id", help="Filter by request id.")
-    parser.add_argument("--refresh", action="store_true", help="Call check_pending_requests() before reading cache.")
-    parser.add_argument("--scan-emails", action="store_true", help="Run an explicit mailbox scan before reading cache.")
+    parser.add_argument("--refresh", action="store_true", help="Query the remote ZTF status page when credentials are set.")
+    parser.add_argument("--scan-emails", action="store_true", help="Reserved for the workspace IMAP path; unsupported in GitHub-only mode.")
     parser.add_argument("--days-back", type=int, default=3, help="Mailbox lookback window for explicit scans.")
     parser.add_argument("--max-emails", type=int, default=50, help="Mailbox scan cap for explicit scans.")
+    parser.add_argument("--cache-dir", help="Portable cache directory. Defaults to <repo>/data/ztf_forced_cache.")
     parser.add_argument("--output-dir", help="Directory for JSON and plots.")
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging.")
     args = parser.parse_args()
@@ -78,26 +68,33 @@ def main() -> int:
     _setup_logging(args.verbose)
     target_name = args.name or args.request_id or "ztf_forced_monitor"
     output_dir = ensure_output_dir(REPO_ROOT, "snc-forced-phot-monitor", target_name, args.output_dir)
-    os.chdir(REPO_ROOT)
+    cache_dir = portable_cache_dir(REPO_ROOT, args.cache_dir)
+    records = load_request_records(cache_dir)
 
-    email_scan_result = None
+    email_scan_result: dict[str, Any] | None = None
     if args.scan_emails:
-        email_monitor = ZTFEmailMonitor(cache_dir=str(REPO_ROOT / "data" / "ztf_forced_cache"))
-        email_scan_result = email_monitor.scan_emails_and_download_optimized(
-            days_back=args.days_back,
-            max_emails=args.max_emails,
-        )
+        email_scan_result = {
+            "supported": False,
+            "reason": "GitHub-only portable monitor does not bundle IMAP mailbox scanning.",
+            "days_back": args.days_back,
+            "max_emails": args.max_emails,
+        }
 
-    status_updates = None
+    status_updates: dict[str, Any] | None = None
     if args.refresh:
-        client = ZTFForcedPhotometryClient(cache_dir=str(REPO_ROOT / "data" / "ztf_forced_cache"))
-        status_updates = client.check_pending_requests()
+        status_updates = refresh_request_statuses(
+            records,
+            cache_dir=cache_dir,
+            request_id=args.request_id,
+            source_name=args.name,
+        )
+        records = load_request_records(cache_dir)
 
-    rows = _find_requests_by_id(args.request_id)
+    rows = find_requests_by_id(records, args.request_id)
     if not rows and args.name:
-        rows = find_requests_by_name(REPO_ROOT, args.name)
+        rows = find_requests_by_name(records, args.name)
     if not rows:
-        rows = load_request_cache(REPO_ROOT)
+        rows = sorted(records.values(), key=lambda item: str(item.get("submit_time") or item.get("request_id") or ""), reverse=True)
 
     plot_path = _status_plot(
         rows,
@@ -107,10 +104,11 @@ def main() -> int:
 
     payload = {
         "skill": "snc-forced-phot-monitor",
-        "workspace_alignment": "Matches the monitoring stage of the SNC ZTF forced-photometry workflow.",
+        "workspace_alignment": "Matches the monitoring stage of the SNC ZTF forced-photometry workflow with a portable cache and optional remote status refresh.",
         "action": "monitor",
         "name": args.name,
         "request_id": args.request_id,
+        "cache_dir": str(cache_dir),
         "refresh": bool(args.refresh),
         "scan_emails": bool(args.scan_emails),
         "email_scan_result": json_safe(email_scan_result),
