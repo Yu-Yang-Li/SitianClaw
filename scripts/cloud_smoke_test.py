@@ -37,6 +37,11 @@ def main() -> int:
         help="Also run the portable snc-candidate-screen-3day workflow smoke test.",
     )
     parser.add_argument(
+        "--include-host-context",
+        action="store_true",
+        help="Also run the portable snc-host-context smoke test with photometry queries disabled.",
+    )
+    parser.add_argument(
         "--output-dir",
         default=None,
         help="Directory for smoke-test artifacts. Defaults to <repo>/data/cloud_smoke_test.",
@@ -85,6 +90,16 @@ def main() -> int:
             str(repo_root / "skills" / "snc-candidate-screen-3day" / "scripts" / "screen_candidates_3day.py"),
             "--output-dir",
             str(output_dir / "candidate_screen"),
+        ]
+    if args.include_host_context:
+        commands["host_context"] = [
+            sys.executable,
+            str(repo_root / "skills" / "snc-host-context" / "scripts" / "query_host_context.py"),
+            "--name",
+            args.name,
+            "--skip-photometry",
+            "--output-dir",
+            str(output_dir / "host_context"),
         ]
 
     results = {name: _run(command, repo_root) for name, command in commands.items()}

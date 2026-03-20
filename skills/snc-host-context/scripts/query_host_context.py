@@ -12,20 +12,16 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from _snc_skill_support import (  # noqa: E402
-    bootstrap_repo_root,
-    ensure_output_dir,
-    json_safe,
-    resolve_target,
-    safe_slug,
-    write_json,
-)
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.append(str(REPO_ROOT))
 
-REPO_ROOT = bootstrap_repo_root(__file__)
-from src.tns_project.core.crossmatch_vsp import (  # noqa: E402
+from sitianclaw_runtime.host_context import (  # noqa: E402
     crossmatch_all,
     should_exclude_as_definite_star,
 )
+from sitianclaw_runtime.runtime import ensure_output_dir, json_safe, safe_slug, write_json  # noqa: E402
+from sitianclaw_runtime.transients import resolve_target  # noqa: E402
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -73,7 +69,7 @@ def _summary_plot(results: dict[str, Any], output_path: Path, title: str) -> Pat
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Crossmatch host environment and contamination context.")
+    parser = argparse.ArgumentParser(description="Crossmatch host environment and contamination context from portable public catalogs.")
     parser.add_argument("--name", help="Source name, for example 'SN 2026fvx'.")
     parser.add_argument("--ra", type=float, help="RA in degrees.")
     parser.add_argument("--dec", type=float, help="Dec in degrees.")
@@ -89,9 +85,9 @@ def main() -> int:
 
     _setup_logging(args.verbose)
 
-    resolved = resolve_target(REPO_ROOT, name=args.name, ra=args.ra, dec=args.dec)
+    resolved = resolve_target(name=args.name, ra=args.ra, dec=args.dec)
     if resolved["ra"] is None or resolved["dec"] is None:
-        raise SystemExit("Need RA/Dec directly or via a cached target name.")
+        raise SystemExit("Need RA/Dec directly or via public TNS name resolution.")
 
     target_name = resolved["name"]
     output_dir = ensure_output_dir(REPO_ROOT, "snc-host-context", target_name, args.output_dir)

@@ -34,6 +34,7 @@ install https://github.com/<org>/SitianClaw
 - `snc-candidate-screen-3day`
 - `snc-redshift-query`
 - `snc-observability-3day`
+- `snc-host-context`
 
 它们只依赖公开上游服务和 `requirements-cloud.txt` 里的标准 Python 包。
 
@@ -47,7 +48,6 @@ install https://github.com/<org>/SitianClaw
 - `snc-forced-photometry`
 - `snc-observability`
 - `snc-explosion-time`
-- `snc-host-context`
 
 ## 其他补充技能
 
@@ -83,6 +83,12 @@ python scripts/cloud_smoke_test.py --name "SN 2026fvx"
 
 ```text
 python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen
+```
+
+如果你也想把公开 catalog 的宿主环境交叉匹配一起测掉，可以运行：
+
+```text
+python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --include-host-context
 ```
 
 ## 仓库结构

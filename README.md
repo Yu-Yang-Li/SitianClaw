@@ -34,6 +34,7 @@ These skills are already GitHub-only portable and do not require a local `C:\SNC
 - `snc-candidate-screen-3day`
 - `snc-redshift-query`
 - `snc-observability-3day`
+- `snc-host-context`
 
 They rely only on public upstream services plus standard Python packages listed in `requirements-cloud.txt`.
 
@@ -47,7 +48,6 @@ These skills still depend on the full SNC workspace, local caches, credentials, 
 - `snc-forced-photometry`
 - `snc-observability`
 - `snc-explosion-time`
-- `snc-host-context`
 
 ## Additional Skills
 
@@ -83,6 +83,12 @@ To include the portable shortlist workflow as well:
 
 ```text
 python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen
+```
+
+To also include the portable host-context check against public catalogs:
+
+```text
+python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --include-host-context
 ```
 
 ## Layout

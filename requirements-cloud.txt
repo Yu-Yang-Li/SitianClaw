@@ -5,4 +5,5 @@ pandas
 requests
 astropy
 astroplan
+astroquery
 lxml
