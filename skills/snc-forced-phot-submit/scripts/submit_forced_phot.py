@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -12,18 +12,13 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from _snc_skill_support import (
-    bootstrap_repo_root,
-    ensure_output_dir,
-    json_safe,
-    load_request_cache,
-    resolve_target,
-    safe_slug,
-    write_json,
-)
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.append(str(REPO_ROOT))
 
-REPO_ROOT = bootstrap_repo_root(__file__)
-from src.tns_project.core.ztf_forced_photometry import ZTFForcedPhotometryClient  # noqa: E402
+from sitianclaw_runtime.forced_phot import credentials_status, load_request_records, portable_cache_dir, status_counts, submit_forced_photometry  # noqa: E402
+from sitianclaw_runtime.runtime import ensure_output_dir, json_safe, safe_slug, write_json  # noqa: E402
+from sitianclaw_runtime.transients import resolve_target  # noqa: E402
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -32,21 +27,10 @@ def _setup_logging(verbose: bool) -> None:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
 
-
-def _find_requests_by_id(request_id: str | None) -> list[dict[str, Any]]:
-    if not request_id:
-        return []
-    return [row for row in load_request_cache(REPO_ROOT) if row.get("request_id") == request_id]
-
-
 def _status_plot(rows: list[dict[str, Any]], output_path: Path, title: str) -> Path | None:
     if not rows:
         return None
-    counts: dict[str, int] = {}
-    for row in rows:
-        status = str(row.get("status") or "unknown").lower()
-        counts[status] = counts.get(status, 0) + 1
-
+    counts = status_counts(rows)
     labels = list(counts.keys())
     values = [counts[label] for label in labels]
     fig, ax = plt.subplots(figsize=(7.5, 4))
@@ -63,52 +47,56 @@ def _status_plot(rows: list[dict[str, Any]], output_path: Path, title: str) -> P
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Submit a ZTF forced-photometry request using the SNC workspace client.")
+    parser = argparse.ArgumentParser(description="Submit a ZTF forced-photometry request through the portable GitHub-only runtime.")
     parser.add_argument("--name", required=True, help="Source name.")
     parser.add_argument("--ra", type=float, help="RA in degrees.")
     parser.add_argument("--dec", type=float, help="Dec in degrees.")
     parser.add_argument("--jd-start", type=float, help="Start JD.")
     parser.add_argument("--jd-end", type=float, help="End JD.")
     parser.add_argument("--incremental", action="store_true", help="Submit an incremental request.")
+    parser.add_argument("--dry-run", action="store_true", help="Preview the request without sending it to the ZTF service.")
+    parser.add_argument("--cache-dir", help="Portable cache directory. Defaults to <repo>/data/ztf_forced_cache.")
     parser.add_argument("--output-dir", help="Directory for JSON and plots.")
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging.")
     args = parser.parse_args()
 
     _setup_logging(args.verbose)
     output_dir = ensure_output_dir(REPO_ROOT, "snc-forced-phot-submit", args.name, args.output_dir)
-    os.chdir(REPO_ROOT)
+    cache_dir = portable_cache_dir(REPO_ROOT, args.cache_dir)
 
-    resolved = resolve_target(REPO_ROOT, name=args.name, ra=args.ra, dec=args.dec)
+    resolved = resolve_target(name=args.name, ra=args.ra, dec=args.dec)
     if resolved["ra"] is None or resolved["dec"] is None:
-        raise SystemExit("Submission needs RA/Dec directly or via a cached workspace target name.")
+        raise SystemExit("Submission needs RA/Dec directly or via public TNS name resolution.")
 
-    client = ZTFForcedPhotometryClient(cache_dir=str(REPO_ROOT / "data" / "ztf_forced_cache"))
-    if args.incremental:
-        request_id = client.submit_incremental_forced_photometry(
-            source_name=resolved["name"],
-            ra=float(resolved["ra"]),
-            dec=float(resolved["dec"]),
-        )
-    else:
-        request_id = client.submit_normal_forced_photometry(
-            ra=float(resolved["ra"]),
-            dec=float(resolved["dec"]),
-            jd_start=args.jd_start,
-            jd_end=args.jd_end,
-            source_name=resolved["name"],
-            use_conservative_window=args.jd_start is None or args.jd_end is None,
-        )
+    records = load_request_records(cache_dir)
+    submission = submit_forced_photometry(
+        records,
+        cache_dir=cache_dir,
+        source_name=resolved["name"],
+        ra=float(resolved["ra"]),
+        dec=float(resolved["dec"]),
+        jd_start=args.jd_start,
+        jd_end=args.jd_end,
+        incremental=bool(args.incremental),
+        dry_run=bool(args.dry_run),
+    )
+    if not submission.get("ok"):
+        raise SystemExit(submission.get("reason") or "Forced-photometry submission failed.")
 
-    request_rows = _find_requests_by_id(request_id)
+    records_after = load_request_records(cache_dir)
+    request_id = str(submission.get("request_id") or "")
+    request_rows = [records_after[request_id]] if request_id in records_after else []
+    if not request_rows and submission.get("record"):
+        request_rows = [submission["record"]]
     plot_path = _status_plot(
-        request_rows if request_rows else load_request_cache(REPO_ROOT),
+        request_rows if request_rows else list(records_after.values()),
         output_dir / f"{safe_slug(resolved['name'])}_submit_status.png",
         title=f"ZTF Forced Photometry Submit: {resolved['name']}",
     )
 
     payload = {
         "skill": "snc-forced-phot-submit",
-        "workspace_alignment": "Matches the submit stage of the SNC ZTF forced-photometry workflow.",
+        "workspace_alignment": "Matches the submit stage of the SNC ZTF forced-photometry workflow with a portable cache and environment-based credentials.",
         "action": "submit",
         "target": {
             "name": resolved["name"],
@@ -116,10 +104,14 @@ def main() -> int:
             "dec": resolved["dec"],
             "resolved_from": resolved["resolved_from"],
         },
+        "cache_dir": str(cache_dir),
+        "credentials": credentials_status(),
+        "dry_run": bool(args.dry_run),
         "incremental": bool(args.incremental),
         "jd_start": args.jd_start,
         "jd_end": args.jd_end,
         "request_id": request_id,
+        "submission": json_safe(submission),
         "requests": json_safe(request_rows),
         "artifact": str(plot_path) if plot_path is not None else None,
     }

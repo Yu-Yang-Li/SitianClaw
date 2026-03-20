@@ -33,6 +33,7 @@ install https://github.com/<org>/SitianClaw
 - `snc-candidate-crawl-3day`
 - `snc-candidate-screen-3day`
 - `snc-redshift-query`
+- `snc-forced-phot-submit`
 - `snc-forced-phot-monitor`
 - `snc-forced-phot-fetch`
 - `snc-observability-3day`
@@ -44,7 +45,6 @@ install https://github.com/<org>/SitianClaw
 
 下面这些暂时还依赖完整工作区、本地缓存、账号凭据或本地模型，还不是纯云端 skill：
 
-- `snc-forced-phot-submit`
 - `snc-forced-photometry`
 - `snc-observability`
 - `snc-explosion-time`
@@ -76,6 +76,7 @@ python scripts/cloud_smoke_test.py --name "SN 2026fvx"
 
 - `snc-transient-query`
 - `snc-redshift-query`
+- `snc-forced-phot-submit`
 - `snc-forced-phot-monitor`
 - `snc-forced-phot-fetch`
 - `snc-observability-3day`
@@ -98,6 +99,8 @@ python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --includ
 ```text
 python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen --include-host-context --include-forced-phot
 ```
+
+其中 `snc-forced-phot-submit` 会以 `--dry-run` 方式运行，所以这条烟测只验证提交流程本身，不会真的向 ZTF 发起 live 请求。
 
 ## 仓库结构
 

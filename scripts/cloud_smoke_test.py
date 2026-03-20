@@ -107,6 +107,17 @@ def main() -> int:
             str(output_dir / "host_context"),
         ]
     if args.include_forced_phot:
+        commands["forced_phot_submit"] = [
+            sys.executable,
+            str(repo_root / "skills" / "snc-forced-phot-submit" / "scripts" / "submit_forced_phot.py"),
+            "--name",
+            args.name,
+            "--dry-run",
+            "--cache-dir",
+            str(output_dir / "forced_phot_submit_cache"),
+            "--output-dir",
+            str(output_dir / "forced_phot_submit"),
+        ]
         commands["forced_phot_monitor"] = [
             sys.executable,
             str(repo_root / "skills" / "snc-forced-phot-monitor" / "scripts" / "monitor_forced_phot.py"),

@@ -10,16 +10,32 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import requests
+from astropy.time import Time
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_SUBMIT_URL = "https://ztfweb.ipac.caltech.edu/cgi-bin/requestForcedPhotometry.cgi"
 DEFAULT_STATUS_URL = "https://ztfweb.ipac.caltech.edu/cgi-bin/getForcedPhotometryRequests.cgi"
+ZTF_START_JD = 2458194.5
 
 
 def portable_cache_dir(repo_root: Path, cache_dir: str | Path | None = None) -> Path:
     base = Path(cache_dir) if cache_dir is not None else repo_root / "data" / "ztf_forced_cache"
     base.mkdir(parents=True, exist_ok=True)
     return base
+
+
+def credentials_status() -> dict[str, Any]:
+    required = {
+        "ZTF_EMAIL": bool(os.getenv("ZTF_EMAIL", "").strip()),
+        "ZTF_PASSWORD": bool(os.getenv("ZTF_PASSWORD", "").strip()),
+        "ZTF_FP_AUTH_USER": bool(os.getenv("ZTF_FP_AUTH_USER", "").strip()),
+        "ZTF_FP_AUTH_PASS": bool(os.getenv("ZTF_FP_AUTH_PASS", "").strip()),
+    }
+    return {
+        "required": required,
+        "ready": all(required.values()),
+    }
 
 
 def _load_json(path: Path) -> Any:
@@ -53,6 +69,94 @@ def load_request_records(cache_dir: Path) -> dict[str, dict[str, Any]]:
     return records
 
 
+def _now_jd() -> float:
+    now = Time.now()
+    try:
+        return float(now.jd)
+    except (TypeError, ValueError):
+        return float(now.jd.value)
+
+
+def normalize_submission_window(
+    jd_start: float | None = None,
+    jd_end: float | None = None,
+    use_conservative_window: bool = True,
+    max_range_days: float = 60.0,
+) -> dict[str, Any]:
+    current_jd = _now_jd()
+    used_default_window = bool(use_conservative_window or jd_start is None or jd_end is None)
+    if used_default_window:
+        jd_end = current_jd
+        jd_start = max(jd_end - 2.0, ZTF_START_JD)
+    else:
+        jd_start = max(float(jd_start), ZTF_START_JD)
+        jd_end = min(float(jd_end), current_jd)
+        time_range = jd_end - jd_start
+        if time_range <= 0:
+            raise ValueError(f"Invalid time range after clipping: {time_range:.3f} days.")
+        if time_range > max_range_days:
+            jd_start = jd_end - max_range_days
+    return {
+        "jd_start": float(jd_start),
+        "jd_end": float(jd_end),
+        "used_default_window": used_default_window,
+        "span_days": float(jd_end - jd_start),
+    }
+
+
+def latest_matching_jd_end(
+    records: dict[str, dict[str, Any]],
+    source_name: str,
+    ra: float,
+    dec: float,
+) -> tuple[float | None, str | None]:
+    target_name = str(source_name or "").strip().lower()
+    latest_jd_end: float | None = None
+    latest_request_id: str | None = None
+    for record in records.values():
+        if bool(record.get("dry_run")):
+            continue
+        if str(record.get("source_name") or "").strip().lower() != target_name:
+            continue
+        try:
+            if abs(float(record.get("ra")) - float(ra)) >= 1e-3 or abs(float(record.get("dec")) - float(dec)) >= 1e-3:
+                continue
+            jd_end = float(record.get("jd_end") or 0.0)
+        except Exception:
+            continue
+        if jd_end > 0 and (latest_jd_end is None or jd_end > latest_jd_end):
+            latest_jd_end = jd_end
+            latest_request_id = str(record.get("request_id") or "") or None
+    return latest_jd_end, latest_request_id
+
+
+def incremental_submission_window(
+    records: dict[str, dict[str, Any]],
+    source_name: str,
+    ra: float,
+    dec: float,
+    overlap_days: float = 0.02,
+    min_window_days: float = 0.01,
+) -> dict[str, Any]:
+    current_jd = _now_jd()
+    last_end, parent_request_id = latest_matching_jd_end(records, source_name=source_name, ra=ra, dec=dec)
+    if last_end is None or last_end <= 0:
+        jd_start = max(current_jd - 2.0, ZTF_START_JD)
+    else:
+        jd_start = max(last_end - overlap_days, ZTF_START_JD)
+    jd_end = current_jd
+    span_days = float(jd_end - jd_start)
+    if span_days < min_window_days:
+        raise ValueError(f"Incremental window too small: {span_days:.5f} days.")
+    return {
+        "jd_start": float(jd_start),
+        "jd_end": float(jd_end),
+        "span_days": span_days,
+        "parent_request_id": parent_request_id,
+        "used_fallback_window": last_end is None or last_end <= 0,
+    }
+
+
 def write_request_records(cache_dir: Path, records: dict[str, dict[str, Any]]) -> None:
     cache_dir.mkdir(parents=True, exist_ok=True)
     ordered = dict(
@@ -71,6 +175,192 @@ def write_request_records(cache_dir: Path, records: dict[str, dict[str, Any]]) -
     completed = {request_id: record for request_id, record in ordered.items() if request_id not in pending}
     (cache_dir / "pending_requests.json").write_text(json.dumps(pending, ensure_ascii=False, indent=2), encoding="utf-8")
     (cache_dir / "completed_requests.json").write_text(json.dumps(completed, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _html_submission_acknowledged(html_text: str, ra: float | None = None, dec: float | None = None) -> bool:
+    try:
+        lowered = str(html_text or "").lower()
+        plain = lowered.replace("\n", " ")
+        patterns = [
+            "your request has been submitted",
+            "request has been submitted",
+            "your job has been submitted",
+            "successfully submitted",
+            "has been submitted",
+            "is now in the queue",
+            "queued",
+            "thank you",
+        ]
+        if any(pattern in plain for pattern in patterns):
+            return True
+        if ra is not None and dec is not None and "<table" in lowered and "<td>" in lowered:
+            ra_formats = [f"{float(ra):.{digits}f}" for digits in [6, 5, 4, 3]]
+            dec_formats = [f"{float(dec):.{digits}f}" for digits in [6, 5, 4, 3]]
+            return any(ra_text in html_text for ra_text in ra_formats) and any(dec_text in html_text for dec_text in dec_formats)
+    except Exception:
+        return False
+    return False
+
+
+def _build_request_id(source_name: str, ra: float, dec: float, request_type: str) -> str:
+    submit_timestamp = int(Time.now().unix)
+    prefix = "ztf_normal"
+    return f"{prefix}_{source_name}_{ra:.6f}_{dec:.6f}_{submit_timestamp}"
+
+
+def submit_forced_photometry(
+    records: dict[str, dict[str, Any]],
+    cache_dir: Path,
+    source_name: str,
+    ra: float,
+    dec: float,
+    jd_start: float | None = None,
+    jd_end: float | None = None,
+    incremental: bool = False,
+    dry_run: bool = False,
+    overlap_days: float = 0.02,
+    min_window_days: float = 0.01,
+) -> dict[str, Any]:
+    if incremental:
+        window = incremental_submission_window(
+            records,
+            source_name=source_name,
+            ra=ra,
+            dec=dec,
+            overlap_days=overlap_days,
+            min_window_days=min_window_days,
+        )
+        request_type = "incremental"
+        parent_request_id = window.get("parent_request_id")
+    else:
+        window = normalize_submission_window(jd_start=jd_start, jd_end=jd_end, use_conservative_window=jd_start is None or jd_end is None)
+        request_type = "initial"
+        parent_request_id = None
+
+    for existing in records.values():
+        try:
+            same_coords = abs(float(existing.get("ra")) - float(ra)) < 1e-3 and abs(float(existing.get("dec")) - float(dec)) < 1e-3
+        except Exception:
+            same_coords = False
+        if same_coords and str(existing.get("status") or "").lower() in {"submitted", "processing", "unknown"} and not bool(existing.get("dry_run")):
+            return {
+                "ok": True,
+                "duplicate_pending": True,
+                "request_id": existing.get("request_id"),
+                "record": existing,
+                "dry_run": dry_run,
+                "request_type": request_type,
+                "window": window,
+            }
+
+    request_id = _build_request_id(source_name=source_name, ra=ra, dec=dec, request_type=request_type)
+    submit_time = datetime.now(timezone.utc).isoformat()
+    request_record = {
+        "request_id": request_id,
+        "source_name": source_name,
+        "ra": float(ra),
+        "dec": float(dec),
+        "jd_start": float(window["jd_start"]),
+        "jd_end": float(window["jd_end"]),
+        "status": "dry_run" if dry_run else "submitted",
+        "submit_time": submit_time,
+        "origin": "api",
+        "data_points": 0,
+        "request_type": request_type,
+        "parent_request_id": parent_request_id,
+        "dry_run": bool(dry_run),
+    }
+    form_data = {
+        "ra": f"{float(ra):.6f}",
+        "dec": f"{float(dec):.6f}",
+        "jdstart": f"{float(window['jd_start']):.5f}",
+        "jdend": f"{float(window['jd_end']):.5f}",
+        "email": os.getenv("ZTF_EMAIL", "").strip(),
+        "userpass": os.getenv("ZTF_PASSWORD", "").strip(),
+    }
+
+    if dry_run:
+        return {
+            "ok": True,
+            "dry_run": True,
+            "request_id": request_id,
+            "record": request_record,
+            "request_type": request_type,
+            "window": window,
+            "form_preview": form_data,
+        }
+
+    creds = credentials_status()
+    if not creds["ready"]:
+        return {
+            "ok": False,
+            "dry_run": False,
+            "reason": "Missing required ZTF environment variables.",
+            "credentials": creds,
+            "request_type": request_type,
+            "window": window,
+        }
+
+    try:
+        response = requests.post(
+            DEFAULT_SUBMIT_URL,
+            auth=(os.getenv("ZTF_FP_AUTH_USER", "").strip(), os.getenv("ZTF_FP_AUTH_PASS", "").strip()),
+            data=form_data,
+            headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"},
+            timeout=(10, 20),
+        )
+    except requests.exceptions.Timeout:
+        return {
+            "ok": False,
+            "dry_run": False,
+            "reason": "ZTF submission timed out.",
+            "request_type": request_type,
+            "window": window,
+        }
+    except requests.exceptions.RequestException as exc:
+        return {
+            "ok": False,
+            "dry_run": False,
+            "reason": f"ZTF submission network error: {exc}",
+            "request_type": request_type,
+            "window": window,
+        }
+
+    response_excerpt = response.text[:600]
+    lowered = response.text.lower()
+    if response.status_code != 200:
+        return {
+            "ok": False,
+            "dry_run": False,
+            "reason": f"HTTP {response.status_code}",
+            "response_excerpt": response_excerpt,
+            "request_type": request_type,
+            "window": window,
+        }
+    if "error" in lowered or "invalid" in lowered:
+        return {
+            "ok": False,
+            "dry_run": False,
+            "reason": "Remote service rejected the submission.",
+            "response_excerpt": response_excerpt,
+            "request_type": request_type,
+            "window": window,
+        }
+
+    acknowledged = _html_submission_acknowledged(response.text, ra=ra, dec=dec)
+    request_record["status"] = "submitted" if acknowledged else "unknown"
+    records[request_id] = request_record
+    write_request_records(cache_dir, records)
+    return {
+        "ok": True,
+        "dry_run": False,
+        "request_id": request_id,
+        "record": request_record,
+        "request_type": request_type,
+        "window": window,
+        "response_excerpt": response_excerpt,
+        "acknowledged": acknowledged,
+    }
 
 
 def find_requests_by_name(records: dict[str, dict[str, Any]], source_name: str) -> list[dict[str, Any]]:
