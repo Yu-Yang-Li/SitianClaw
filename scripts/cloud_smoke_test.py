@@ -32,6 +32,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run the GitHub-only cloud smoke tests for SitianClaw.")
     parser.add_argument("--name", default="SN 2026fvx", help="Target name for single-target smoke tests.")
     parser.add_argument(
+        "--include-screen",
+        action="store_true",
+        help="Also run the portable snc-candidate-screen-3day workflow smoke test.",
+    )
+    parser.add_argument(
         "--output-dir",
         default=None,
         help="Directory for smoke-test artifacts. Defaults to <repo>/data/cloud_smoke_test.",
@@ -66,6 +71,13 @@ def main() -> int:
             str(output_dir / "candidate_crawl"),
         ],
     }
+    if args.include_screen:
+        commands["candidate_screen"] = [
+            sys.executable,
+            str(repo_root / "skills" / "snc-candidate-screen-3day" / "scripts" / "screen_candidates_3day.py"),
+            "--output-dir",
+            str(output_dir / "candidate_screen"),
+        ]
 
     results = {name: _run(command, repo_root) for name, command in commands.items()}
     summary = {

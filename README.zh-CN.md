@@ -30,6 +30,7 @@ install https://github.com/<org>/SitianClaw
 下面这批已经做成“只装 GitHub 仓库即可运行”，不再依赖本地 `C:\SNC` 完整工作区：
 
 - `snc-candidate-crawl-3day`
+- `snc-candidate-screen-3day`
 - `snc-redshift-query`
 - `snc-observability-3day`
 
@@ -39,7 +40,6 @@ install https://github.com/<org>/SitianClaw
 
 下面这些暂时还依赖完整工作区、本地缓存、账号凭据或本地模型，还不是纯云端 skill：
 
-- `snc-candidate-screen-3day`
 - `snc-forced-phot-submit`
 - `snc-forced-phot-monitor`
 - `snc-forced-phot-fetch`
@@ -77,6 +77,12 @@ python scripts/cloud_smoke_test.py --name "SN 2026fvx"
 - `snc-redshift-query`
 - `snc-observability-3day`
 - `snc-candidate-crawl-3day`
+
+如果你也想把 shortlist 一起测掉，可以运行：
+
+```text
+python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen
+```
 
 ## 仓库结构
 

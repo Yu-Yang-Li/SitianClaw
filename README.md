@@ -30,6 +30,7 @@ If your client supports subpath installs, individual skills can also be installe
 These skills are already GitHub-only portable and do not require a local `C:\SNC` checkout:
 
 - `snc-candidate-crawl-3day`
+- `snc-candidate-screen-3day`
 - `snc-redshift-query`
 - `snc-observability-3day`
 
@@ -39,7 +40,6 @@ They rely only on public upstream services plus standard Python packages listed 
 
 These skills still depend on the full SNC workspace, local caches, credentials, or local models and are not yet pure cloud skills:
 
-- `snc-candidate-screen-3day`
 - `snc-forced-phot-submit`
 - `snc-forced-phot-monitor`
 - `snc-forced-phot-fetch`
@@ -77,6 +77,12 @@ The script clears `SNC_REPO_ROOT` and `PYTHONPATH`, then runs:
 - `snc-redshift-query`
 - `snc-observability-3day`
 - `snc-candidate-crawl-3day`
+
+To include the portable shortlist workflow as well:
+
+```text
+python scripts/cloud_smoke_test.py --name "SN 2026fvx" --include-screen
+```
 
 ## Layout
 

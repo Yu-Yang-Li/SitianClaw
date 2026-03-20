@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -10,29 +11,20 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
-from _snc_skill_support import (
-    bootstrap_repo_root,
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.append(str(REPO_ROOT))
+
+from sitianclaw_runtime.candidates import fetch_combined_data  # noqa: E402
+from sitianclaw_runtime.runtime import (  # noqa: E402
     dataframe_records,
     ensure_output_dir,
     json_safe,
     write_json,
 )
-
-REPO_ROOT = bootstrap_repo_root(__file__)
-from src.tns_project.config.astronomical_config import get_astronomical_config  # noqa: E402
-from src.tns_project.core.astronomical_processor import (  # noqa: E402
-    apply_astronomical_processing,
-    _apply_discovery_date_filter,
-    _apply_galactic_latitude_filter,
-    _apply_redshift_filter,
-    _ensure_required_columns,
-    _process_data_types,
-    _process_host_information,
-)
-from src.tns_project.core.tns_fetcher import fetch_combined_data  # noqa: E402
+from sitianclaw_runtime.screening import get_portable_screening_config, run_candidate_screen  # noqa: E402
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -56,28 +48,6 @@ def _stage_plot(stage_counts: dict[str, int], output_path: Path) -> Path:
     fig.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     return output_path
-
-
-def _final_summary(dataframe: pd.DataFrame) -> dict[str, Any]:
-    if dataframe.empty:
-        return {
-            "row_count": 0,
-            "host_redshift_available": 0,
-            "median_host_redshift": None,
-            "median_abs_galactic_latitude": None,
-        }
-
-    host_redshift = pd.to_numeric(dataframe.get("host_redshift"), errors="coerce")
-    host_galactic_b = pd.to_numeric(dataframe.get("host_galactic_b"), errors="coerce")
-    return {
-        "row_count": int(len(dataframe)),
-        "host_redshift_available": int(host_redshift.notna().sum()),
-        "median_host_redshift": float(host_redshift.dropna().median()) if host_redshift.notna().any() else None,
-        "median_abs_galactic_latitude": float(host_galactic_b.abs().dropna().median())
-        if host_galactic_b.notna().any()
-        else None,
-    }
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -110,7 +80,7 @@ def main() -> int:
     if raw_df is None:
         raw_df = pd.DataFrame()
 
-    config = get_astronomical_config()
+    config = get_portable_screening_config()
     if args.recent_days is not None:
         config["RECENT_DISCOVERY_DAYS"] = args.recent_days
     if args.redshift_max is not None:
@@ -118,64 +88,26 @@ def main() -> int:
     if args.min_galactic_latitude is not None:
         config["MIN_GALACTIC_LATITUDE"] = args.min_galactic_latitude
 
-    working_df = _ensure_required_columns(raw_df.copy())
-    working_df = _process_data_types(working_df)
-    after_time = _apply_discovery_date_filter(working_df, config["RECENT_DISCOVERY_DAYS"], config)
-    after_host = _process_host_information(after_time, config)
-    if "host_redshift" in after_host.columns:
-        host_z = pd.to_numeric(after_host["host_redshift"], errors="coerce")
-        near_zero = host_z.le(1e-5)
-        after_host.loc[near_zero.fillna(False), "host_redshift"] = np.nan
-    after_redshift = _apply_redshift_filter(
-        after_host,
-        config["REDSHIFT_RANGE"],
-        config["RECENT_DISCOVERY_DAYS"],
-        config,
-    )
-    after_galactic = _apply_galactic_latitude_filter(after_redshift, config["MIN_GALACTIC_LATITUDE"])
-    final_df = after_galactic.copy()
-    filter_mode = "strict"
-    relaxed_summary: dict[str, Any] | None = None
-
-    if final_df.empty and not args.disable_relaxed_fallback:
-        relaxed_config = get_astronomical_config()
-        relaxed_config["REDSHIFT_RANGE"] = (0.0, 0.05)
-        relaxed_config["RECENT_DISCOVERY_DAYS"] = 7
-        relaxed_config["ENABLE_SECONDARY_HOST_MATCH"] = False
-        relaxed_df = apply_astronomical_processing(
-            df=raw_df.copy(),
-            redshift_range=(0.0, 0.05),
-            config=relaxed_config,
-        )
-        relaxed_summary = {
-            "enabled": True,
-            "recent_discovery_days": 7,
-            "redshift_range": [0.0, 0.05],
-            "row_count": int(len(relaxed_df)),
-        }
-        if not relaxed_df.empty:
-            final_df = relaxed_df.copy()
-            final_df["_filter_mode"] = "relaxed"
-            filter_mode = "relaxed"
+    screen_result = run_candidate_screen(raw_df=raw_df.copy(), config=config, disable_relaxed_fallback=args.disable_relaxed_fallback)
+    after_time = screen_result["after_time"]
+    after_host = screen_result["after_host"]
+    after_redshift = screen_result["after_redshift"]
+    after_galactic = screen_result["after_galactic"]
+    final_df = screen_result["final_df"]
+    filter_mode = screen_result["filter_mode"]
+    relaxed_summary = screen_result["relaxed_fallback"]
 
     raw_csv_path = output_dir / "candidate_screen_3day_raw.csv"
     final_csv_path = output_dir / "candidate_screen_3day.csv"
     raw_df.to_csv(raw_csv_path, index=False)
     final_df.to_csv(final_csv_path, index=False)
 
-    stage_counts = {
-        "raw": int(len(raw_df)),
-        "date_cut": int(len(after_time)),
-        "host_enriched": int(len(after_host)),
-        "redshift_cut": int(len(after_redshift)),
-        "strict_final": int(len(after_galactic)),
-        "returned_final": int(len(final_df)),
-    }
+    stage_counts = screen_result["stage_counts"]
     stage_plot_path = _stage_plot(stage_counts, output_dir / "candidate_screen_3day_stage_counts.png")
 
     payload: dict[str, Any] = {
         "skill": "snc-candidate-screen-3day",
-        "workspace_alignment": "Matches DataCycleHandler._apply_astronomical_processing() strict mode on the current SNC workspace.",
+        "workspace_alignment": "GitHub-only portable shortlist aligned to the SNC strict 3-day screening defaults and relaxed fallback.",
         "config": {
             "recent_discovery_days": config["RECENT_DISCOVERY_DAYS"],
             "redshift_range": list(config["REDSHIFT_RANGE"]),
@@ -184,8 +116,9 @@ def main() -> int:
         "filter_mode": filter_mode,
         "relaxed_fallback": json_safe(relaxed_summary),
         "crawl_summary": json_safe(fetch_result.get("summary", {})),
+        "host_query_summary": json_safe(screen_result["host_query_summary"]),
         "stage_counts": stage_counts,
-        "final_summary": _final_summary(final_df),
+        "final_summary": screen_result["final_summary"],
         "preview": dataframe_records(
             final_df,
             columns=[
@@ -194,7 +127,8 @@ def main() -> int:
                 "discoverydate",
                 "host_name",
                 "host_redshift",
-                "host_galactic_b",
+                "effective_redshift",
+                "source_galactic_b",
                 "data_source",
             ],
             limit=30,
