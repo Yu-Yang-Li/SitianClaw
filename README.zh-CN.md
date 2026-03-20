@@ -25,6 +25,30 @@ install https://github.com/<org>/SitianClaw
 - `snc-forced-phot-fetch`：读取已下载的强制测光结果并画图
 - `snc-observability-3day`：评估未来 3 天在 SNC 台站集合上的可观测性
 
+## 当前已云端可用
+
+下面这批已经做成“只装 GitHub 仓库即可运行”，不再依赖本地 `C:\SNC` 完整工作区：
+
+- `snc-candidate-crawl-3day`
+- `snc-redshift-query`
+- `snc-observability-3day`
+
+它们只依赖公开上游服务和 `requirements-cloud.txt` 里的标准 Python 包。
+
+## 仍依赖本地 SNC 的技能
+
+下面这些暂时还依赖完整工作区、本地缓存、账号凭据或本地模型，还不是纯云端 skill：
+
+- `snc-candidate-screen-3day`
+- `snc-forced-phot-submit`
+- `snc-forced-phot-monitor`
+- `snc-forced-phot-fetch`
+- `snc-forced-photometry`
+- `snc-observability`
+- `snc-transient-query`
+- `snc-explosion-time`
+- `snc-host-context`
+
 ## 其他补充技能
 
 - `snc-transient-query`：单目标的 TNS / broker 临时查询
@@ -36,9 +60,8 @@ install https://github.com/<org>/SitianClaw
 
 ## 运行前提
 
-- 本仓库只提供 skills，不包含完整 SNC 科学代码与数据。
-- 本地仍需存在真实的 SNC 工作区，至少应包含 `src/tns_project`、`sn_clock`、`data` 等目录。
-- 调用 skill 时，建议在 SNC 工作区根目录下运行；如果不在该目录下，请设置 `SNC_REPO_ROOT` 指向工作区根目录。
+- 对于“当前已云端可用”的那批，只需要标准 Python 依赖；如果运行环境不会自动补装依赖，请安装 `requirements-cloud.txt`。
+- 对于“仍依赖本地 SNC”的那批，依然需要完整的 SNC 科学代码、缓存、凭据或本地模型。
 - 调用环境需要允许启动 Python，并允许写入 JSON / PNG / HTML 等产物。
 
 ## 仓库结构

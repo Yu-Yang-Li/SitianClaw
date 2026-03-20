@@ -1,11 +1,11 @@
 ---
 name: snc-candidate-crawl-3day
-description: Fetch the SNC workspace 3-day transient candidate pool by calling the same TNS plus ZTF plus LSST broker crawl used by the live data cycle, then bind the recent pool to host-redshift resolution and produce a nearby-universe candidate view using the current workspace threshold. Use when Codex needs recent intake candidates with nearby redshift context rather than a pure raw list.
+description: Fetch the SitianClaw 3-day transient candidate pool from public TNS plus ZTF plus LSST broker feeds, then bind the recent pool to host-redshift resolution and produce a nearby-universe candidate view using the same `z<=0.025` threshold as the SNC workflow. Use when Codex needs recent intake candidates with nearby redshift context rather than a pure raw list.
 ---
 
 # SNC Candidate Crawl 3day
 
-Fetch the same intake pool that the SNC workspace uses, but do not stop at a raw list. This skill mirrors `DataCycleHandler._fetch_tns_data()`, then resolves host redshift for the recent subset so the returned pool is already biased toward nearby-universe triage with the same nearby threshold the workspace uses.
+Fetch the same style of intake pool that the SNC workflow uses, but do not stop at a raw list. This skill combines public TNS results with public ALeRCE ZTF and LSST object feeds, then resolves host redshift for the recent subset so the returned pool is already biased toward nearby-universe triage with the same nearby threshold the workflow uses.
 
 ## Quick Start
 
@@ -17,8 +17,8 @@ python skills/snc-candidate-crawl-3day/scripts/crawl_candidates_3day.py --output
 
 ## Workflow
 
-1. Bootstrap the local SNC repo from the current working directory or `SNC_REPO_ROOT`.
-2. Call `src/tns_project/core/tns_fetcher.py::fetch_combined_data(...)`.
+1. Bootstrap the bundled SitianClaw runtime from the installed repository root.
+2. Pull recent candidates from public TNS, ZTF ALeRCE, and LSST ALeRCE endpoints.
 3. Keep the workspace defaults unless the user explicitly asks otherwise:
    - `include_ztf=True`
    - `include_lsst=True`
@@ -42,3 +42,4 @@ python skills/snc-candidate-crawl-3day/scripts/crawl_candidates_3day.py --output
 
 - Prefer this skill over `snc-transient-query` when the user is asking about the workspace intake queue rather than a single named object.
 - If the user wants the science shortlist, run `snc-candidate-screen-3day` after this skill rather than hand-filtering the raw crawl.
+- This skill is cloud-ready: it can run from a plain GitHub install without a local `C:\SNC` checkout.

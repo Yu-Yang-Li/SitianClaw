@@ -4,7 +4,7 @@ Portable astronomy skills for Codex/OpenClaw style agents.
 
 `SitianClaw` packages the current SNC no-server workflows as installable skills so an agent can gain transient-analysis capabilities from a single GitHub install step.
 
-The preferred entry points are now workflow-aligned skills that mirror the real SNC workspace pipeline, not only broad one-off utilities.
+The preferred entry points are now workflow-aligned skills that mirror the real SNC workflow, not only broad one-off utilities.
 
 ## Install
 
@@ -25,6 +25,30 @@ If your client supports subpath installs, individual skills can also be installe
 - `snc-forced-phot-fetch`: load downloaded forced-photometry results and plot them
 - `snc-observability-3day`: evaluate the next 3 days of observability across the SNC telescope set
 
+## Cloud-Ready Today
+
+These skills are already GitHub-only portable and do not require a local `C:\SNC` checkout:
+
+- `snc-candidate-crawl-3day`
+- `snc-redshift-query`
+- `snc-observability-3day`
+
+They rely only on public upstream services plus standard Python packages listed in `requirements-cloud.txt`.
+
+## Still Local-Dependent
+
+These skills still depend on the full SNC workspace, local caches, credentials, or local models and are not yet pure cloud skills:
+
+- `snc-candidate-screen-3day`
+- `snc-forced-phot-submit`
+- `snc-forced-phot-monitor`
+- `snc-forced-phot-fetch`
+- `snc-forced-photometry`
+- `snc-observability`
+- `snc-transient-query`
+- `snc-explosion-time`
+- `snc-host-context`
+
 ## Additional Skills
 
 - `snc-transient-query`: ad hoc single-target TNS and broker inspection
@@ -36,9 +60,8 @@ If your client supports subpath installs, individual skills can also be installe
 
 ## Runtime Requirements
 
-- This repository ships skills, not the full SNC science codebase.
-- The actual SNC workspace must still exist locally with `src/tns_project`, `sn_clock`, and the related data/cache directories.
-- Run the installed skill from inside the SNC workspace, or set `SNC_REPO_ROOT` to the workspace root.
+- For the cloud-ready subset, only standard Python packages are needed; install `requirements-cloud.txt` if your agent runtime does not auto-resolve imports.
+- The local-dependent subset still requires the full SNC science workspace, local caches, credentials, or local models.
 - The agent session must allow launching Python and writing output artifacts.
 
 ## Layout

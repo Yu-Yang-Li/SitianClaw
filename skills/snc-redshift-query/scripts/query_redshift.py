@@ -12,23 +12,22 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from astropy import units as u
+from astropy.coordinates import SkyCoord
 
-from astropy import units as u  # noqa: E402
-from astropy.coordinates import SkyCoord  # noqa: E402
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.append(str(REPO_ROOT))
 
-from _snc_skill_support import (  # noqa: E402
-    bootstrap_repo_root,
+from sitianclaw_runtime.redshift import get_host_redshift, merge_redshifts, query_ned_for_z_and_host  # noqa: E402
+from sitianclaw_runtime.runtime import (  # noqa: E402
     ensure_output_dir,
     json_safe,
-    resolve_target,
+    normalize_name,
     safe_slug,
     write_json,
 )
-
-REPO_ROOT = bootstrap_repo_root(__file__)
-from src.tns_project.core.alerce_scraper import get_host_redshift  # noqa: E402
-from src.tns_project.core.redshift_consensus import merge_redshifts  # noqa: E402
-from src.tns_project.utils.ned_query import query_ned_for_z_and_host  # noqa: E402
+from sitianclaw_runtime.tns import fetch_tns_data_by_name  # noqa: E402
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -36,6 +35,34 @@ def _setup_logging(verbose: bool) -> None:
         level=logging.DEBUG if verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+
+
+def _resolve_target(name: str | None, ra: float | None, dec: float | None) -> dict[str, Any]:
+    if ra is not None and dec is not None:
+        return {"name": name or "custom-target", "ra": ra, "dec": dec, "tns_entry": None, "resolved_from": ["direct_input"]}
+    if not name:
+        raise SystemExit("Need a target name or direct RA/Dec.")
+    table = fetch_tns_data_by_name(name)
+    if table.empty:
+        raise SystemExit(f"Unable to resolve {name} from public TNS data.")
+    normalized = normalize_name(name)
+    for _, row in table.iterrows():
+        if normalize_name(row.get("tns_name")) == normalized:
+            return {
+                "name": row.get("tns_name") or name,
+                "ra": float(row.get("ra_deg")),
+                "dec": float(row.get("dec_deg")),
+                "tns_entry": row.to_dict(),
+                "resolved_from": ["public_tns"],
+            }
+    row = table.iloc[0]
+    return {
+        "name": row.get("tns_name") or name,
+        "ra": float(row.get("ra_deg")),
+        "dec": float(row.get("dec_deg")),
+        "tns_entry": row.to_dict(),
+        "resolved_from": ["public_tns_fallback"],
+    }
 
 
 def _plot_redshift_summary(
@@ -46,7 +73,6 @@ def _plot_redshift_summary(
 ) -> Path | None:
     if not measurements:
         return None
-
     fig, ax = plt.subplots(figsize=(8, 3.8))
     y_positions = list(range(len(measurements)))
     values = [float(item["z"]) for item in measurements]
@@ -84,7 +110,7 @@ def _compute_offset_arcsec(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Resolve host redshift and redshift consensus.")
+    parser = argparse.ArgumentParser(description="Resolve host redshift and redshift consensus from GitHub-only portable sources.")
     parser.add_argument("--name", help="Transient name, for example 'SN 2026fvx'.")
     parser.add_argument("--ra", type=float, help="RA in degrees.")
     parser.add_argument("--dec", type=float, help="Dec in degrees.")
@@ -96,42 +122,29 @@ def main() -> int:
     args = parser.parse_args()
 
     _setup_logging(args.verbose)
-
-    resolved = resolve_target(REPO_ROOT, name=args.name, ra=args.ra, dec=args.dec)
+    resolved = _resolve_target(args.name, args.ra, args.dec)
     target_name = resolved["name"]
-    if resolved["ra"] is None or resolved["dec"] is None:
-        raise SystemExit("Need RA/Dec directly or via a resolvable local target name.")
-
     output_dir = ensure_output_dir(REPO_ROOT, "snc-redshift-query", target_name, args.output_dir)
     tns_entry = resolved["tns_entry"] or {}
 
     tns_z = args.tns_z
     if tns_z is None:
-        tns_z = tns_entry.get("redshift") or tns_entry.get("host_redshift")
-    tns_z = float(tns_z) if tns_z not in (None, "") else None
+        raw_tns_z = tns_entry.get("redshift")
+        try:
+            tns_z = float(raw_tns_z) if raw_tns_z not in (None, "", "N/A") else None
+        except Exception:
+            tns_z = None
 
     host_z, host_name, host_ra, host_dec, host_type, host_source = get_host_redshift(
-        float(resolved["ra"]),
-        float(resolved["dec"]),
-        target_name,
+        float(resolved["ra"]), float(resolved["dec"]), target_name
     )
     ned_z, ned_host_name, ned_host_ra, ned_host_dec, ned_host_type = query_ned_for_z_and_host(
-        float(resolved["ra"]),
-        float(resolved["dec"]),
-        target_name,
+        float(resolved["ra"]), float(resolved["dec"]), target_name
     )
 
     broker_z = args.broker_z
     broker_source = args.broker_source
-    if broker_z is None and host_source == "ALeRCE" and host_z is not None:
-        broker_z = float(host_z)
-
-    consensus = merge_redshifts(
-        ned_z=ned_z,
-        broker_z=broker_z,
-        broker_source=broker_source,
-        tns_z=tns_z,
-    )
+    consensus = merge_redshifts(ned_z=ned_z, broker_z=broker_z, broker_source=broker_source, tns_z=tns_z)
 
     measurements: list[dict[str, Any]] = []
     if tns_z is not None and math.isfinite(tns_z):
@@ -152,12 +165,7 @@ def main() -> int:
     final_host_dec = host_dec if host_dec is not None else ned_host_dec
     final_host_name = host_name or ned_host_name
     final_host_type = host_type if host_type not in (None, "N/A") else ned_host_type
-    offset_arcsec = _compute_offset_arcsec(
-        resolved["ra"],
-        resolved["dec"],
-        final_host_ra,
-        final_host_dec,
-    )
+    offset_arcsec = _compute_offset_arcsec(resolved["ra"], resolved["dec"], final_host_ra, final_host_dec)
 
     result = {
         "target": {
@@ -192,7 +200,6 @@ def main() -> int:
         },
         "artifact": str(plot_path) if plot_path is not None else None,
     }
-
     json_path = write_json(output_dir / f"{safe_slug(target_name)}_redshift_query.json", result)
     result["json_path"] = str(json_path)
     print(json.dumps(json_safe(result), ensure_ascii=False, indent=2))

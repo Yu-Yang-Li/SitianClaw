@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -11,17 +12,19 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from _snc_skill_support import (
-    bootstrap_repo_root,
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.append(str(REPO_ROOT))
+
+from sitianclaw_runtime.observability import get_best_observability_analysis  # noqa: E402
+from sitianclaw_runtime.runtime import (  # noqa: E402
     ensure_output_dir,
     json_safe,
-    resolve_target,
     safe_slug,
     write_json,
 )
-
-REPO_ROOT = bootstrap_repo_root(__file__)
-from src.tns_project.utils.astroplan_observability import get_best_observability_analysis  # noqa: E402
+from sitianclaw_runtime.tns import fetch_tns_data_by_name  # noqa: E402
+from sitianclaw_runtime.runtime import normalize_name  # noqa: E402
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -29,6 +32,40 @@ def _setup_logging(verbose: bool) -> None:
         level=logging.DEBUG if verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+
+
+def _resolve_target(name: str | None, ra: float | None, dec: float | None) -> dict[str, Any]:
+    if ra is not None and dec is not None:
+        return {
+            "name": name or "custom-target",
+            "ra": ra,
+            "dec": dec,
+            "resolved_from": ["direct_input"],
+        }
+    if not name:
+        raise SystemExit("Observability needs a target name or direct RA/Dec.")
+
+    table = fetch_tns_data_by_name(name)
+    if table.empty:
+        raise SystemExit(f"Unable to resolve {name} from public TNS data.")
+
+    normalized = normalize_name(name)
+    for _, row in table.iterrows():
+        if normalize_name(row.get("tns_name")) == normalized:
+            return {
+                "name": row.get("tns_name") or name,
+                "ra": float(row.get("ra_deg")),
+                "dec": float(row.get("dec_deg")),
+                "resolved_from": ["public_tns"],
+            }
+
+    row = table.iloc[0]
+    return {
+        "name": row.get("tns_name") or name,
+        "ra": float(row.get("ra_deg")),
+        "dec": float(row.get("dec_deg")),
+        "resolved_from": ["public_tns_fallback"],
+    }
 
 
 def _site_summary(entry: dict[str, Any]) -> dict[str, Any]:
@@ -87,9 +124,9 @@ def main() -> int:
     args = parser.parse_args()
 
     _setup_logging(args.verbose)
-    resolved = resolve_target(REPO_ROOT, name=args.name, ra=args.ra, dec=args.dec)
+    resolved = _resolve_target(name=args.name, ra=args.ra, dec=args.dec)
     if resolved["ra"] is None or resolved["dec"] is None:
-        raise SystemExit("Observability needs RA/Dec directly or via a cached workspace target name.")
+        raise SystemExit("Observability needs RA/Dec directly or via public TNS name resolution.")
 
     output_dir = ensure_output_dir(REPO_ROOT, "snc-observability-3day", resolved["name"], args.output_dir)
     results = get_best_observability_analysis(float(resolved["ra"]), float(resolved["dec"]), site_names=args.site)
@@ -104,7 +141,7 @@ def main() -> int:
 
     payload = {
         "skill": "snc-observability-3day",
-        "workspace_alignment": "Matches the SNC forward-looking 3-day observability analysis across workspace telescope sites.",
+        "workspace_alignment": "GitHub-only portable 3-day observability forecast across the standard SNC telescope set.",
         "target": {
             "name": resolved["name"],
             "ra": resolved["ra"],
