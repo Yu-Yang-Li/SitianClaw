@@ -18,7 +18,7 @@ If your client supports subpath installs, individual skills can also be installe
 
 ## Preferred Workflow Skills
 
-- `snc-candidate-crawl-3day`: fetch the raw 3-day TNS plus ZTF plus LSST candidate pool used by the workspace intake stage
+- `snc-candidate-crawl-3day`: fetch the 3-day TNS plus ZTF plus LSST intake pool and bind it to nearby host-redshift context
 - `snc-candidate-screen-3day`: apply the strict SNC shortlist science cuts to that 3-day pool
 - `snc-forced-phot-submit`: submit a new ZTF forced-photometry request
 - `snc-forced-phot-monitor`: monitor pending requests and refresh cache or mailbox state

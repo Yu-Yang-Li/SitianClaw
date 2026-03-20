@@ -1,4 +1,4 @@
 interface:
   display_name: "SNC 3-Day Crawl"
   short_description: "Fetch raw TNS ZTF LSST candidates"
-  default_prompt: "Use $snc-candidate-crawl-3day to fetch the SNC 3-day candidate pool from TNS, ZTF, and LSST brokers, then summarize the raw list."
+  default_prompt: "Use $snc-candidate-crawl-3day to fetch the SNC 3-day candidate pool, bind it to host redshift, and summarize the nearby-universe candidates first."

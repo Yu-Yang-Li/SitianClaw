@@ -1,11 +1,11 @@
 ---
 name: snc-candidate-crawl-3day
-description: Fetch the SNC workspace raw 3-day transient candidate pool by calling the same TNS plus ZTF plus LSST broker crawl used by the live data cycle. Use when Codex needs the broad incoming candidate list before science cuts, especially for requests about recent 3-day transient crawling, broker/TNS intake, or raw candidate exports aligned with DataCycleHandler._fetch_tns_data().
+description: Fetch the SNC workspace 3-day transient candidate pool by calling the same TNS plus ZTF plus LSST broker crawl used by the live data cycle, then bind the recent pool to host-redshift resolution and produce a nearby-universe candidate view. Use when Codex needs recent intake candidates with nearby redshift context rather than a pure raw list.
 ---
 
 # SNC Candidate Crawl 3day
 
-Fetch the same raw candidate pool that the SNC workspace uses before shortlist screening. This skill mirrors `DataCycleHandler._fetch_tns_data()` and is the right entry point for "crawl the last 3 days" style requests.
+Fetch the same intake pool that the SNC workspace uses, but do not stop at a raw list. This skill mirrors `DataCycleHandler._fetch_tns_data()`, then resolves host redshift for the recent subset so the returned pool is already biased toward nearby-universe triage.
 
 ## Quick Start
 
@@ -26,14 +26,17 @@ python skills/snc-candidate-crawl-3day/scripts/crawl_candidates_3day.py --output
    - `ztf_max_candidates=300`
    - `lsst_hours_back=72`
    - `lsst_max_candidates=200`
-4. Save both structured output and a quick-look visualization.
+4. Resolve host redshift for the recent subset and build a nearby candidate pool with `z <= 0.05` by default.
+5. Save both structured output and quick-look visualizations.
 
 ## Outputs
 
-- `candidate_crawl_3day.json`: structured summary and preview rows
+- `candidate_crawl_3day.json`: structured summary, recent-pool counts, and nearby preview rows
 - `candidate_crawl_3day.csv`: raw merged candidate table
+- `candidate_crawl_3day_nearby.csv`: recent nearby-universe candidate pool with resolved redshift
 - `candidate_crawl_3day_source_mix.png`: per-source contribution counts
 - `candidate_crawl_3day_sky.png`: RA/Dec scatter of the raw pool
+- `candidate_crawl_3day_nearby_redshift.png`: redshift distribution of the nearby pool
 
 ## Notes
 
