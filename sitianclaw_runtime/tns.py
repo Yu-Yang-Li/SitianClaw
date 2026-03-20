@@ -80,7 +80,17 @@ def _convert_tns_coordinates(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _build_tns_url(name: str | None = None) -> str:
+def _build_recent_tns_url(days_back: int = 3) -> str:
+    parsed = urlparse("https://www.wis-tns.org/search?classified_sne=0&num_page=500")
+    query = parse_qs(parsed.query)
+    query["reported_within_last_value"] = [max(int(days_back), 1)]
+    query["reported_within_last_units"] = ["days"]
+    return urlunparse(
+        (parsed.scheme, parsed.netloc, parsed.path, parsed.params, urlencode(query, doseq=True), parsed.fragment)
+    )
+
+
+def _build_tns_url(name: str | None = None, days_back: int = 3) -> str:
     if name:
         parsed = urlparse("https://www.wis-tns.org/search?name_like=0")
         query = parse_qs(parsed.query)
@@ -88,7 +98,7 @@ def _build_tns_url(name: str | None = None) -> str:
         return urlunparse(
             (parsed.scheme, parsed.netloc, parsed.path, parsed.params, urlencode(query, doseq=True), parsed.fragment)
         )
-    return DEFAULT_TNS_URL
+    return _build_recent_tns_url(days_back=days_back)
 
 
 def _object_slug(name: str) -> str:
@@ -208,8 +218,8 @@ def fetch_tns_data_from_url(target_url: str) -> pd.DataFrame:
     return table
 
 
-def fetch_tns_data_from_web() -> pd.DataFrame:
-    return fetch_tns_data_from_url(_build_tns_url())
+def fetch_tns_data_from_web(days_back: int = 3) -> pd.DataFrame:
+    return fetch_tns_data_from_url(_build_tns_url(days_back=days_back))
 
 
 def fetch_tns_data_by_name(name: str) -> pd.DataFrame:

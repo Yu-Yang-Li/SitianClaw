@@ -48,6 +48,14 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     commands = {
+        "transient_query": [
+            sys.executable,
+            str(repo_root / "skills" / "snc-transient-query" / "scripts" / "query_transients.py"),
+            "--name",
+            args.name,
+            "--output-dir",
+            str(output_dir / "transient_query"),
+        ],
         "redshift": [
             sys.executable,
             str(repo_root / "skills" / "snc-redshift-query" / "scripts" / "query_redshift.py"),

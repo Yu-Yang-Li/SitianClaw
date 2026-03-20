@@ -29,6 +29,7 @@ install https://github.com/<org>/SitianClaw
 
 下面这批已经做成“只装 GitHub 仓库即可运行”，不再依赖本地 `C:\SNC` 完整工作区：
 
+- `snc-transient-query`
 - `snc-candidate-crawl-3day`
 - `snc-candidate-screen-3day`
 - `snc-redshift-query`
@@ -45,7 +46,6 @@ install https://github.com/<org>/SitianClaw
 - `snc-forced-phot-fetch`
 - `snc-forced-photometry`
 - `snc-observability`
-- `snc-transient-query`
 - `snc-explosion-time`
 - `snc-host-context`
 
@@ -74,6 +74,7 @@ python scripts/cloud_smoke_test.py --name "SN 2026fvx"
 
 这个脚本会主动清掉 `SNC_REPO_ROOT` 和 `PYTHONPATH`，然后依次执行：
 
+- `snc-transient-query`
 - `snc-redshift-query`
 - `snc-observability-3day`
 - `snc-candidate-crawl-3day`
