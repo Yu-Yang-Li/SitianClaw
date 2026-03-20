@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -220,7 +221,8 @@ def main() -> int:
 
     target_name = getattr(args, "name", None) or getattr(args, "request_id", None) or "ztf-forced-photometry"
     output_dir = ensure_output_dir(REPO_ROOT, "snc-forced-photometry", target_name, getattr(args, "output_dir", None))
-    client = ZTFForcedPhotometryClient()
+    os.chdir(REPO_ROOT)
+    client = ZTFForcedPhotometryClient(cache_dir=str(REPO_ROOT / "data" / "ztf_forced_cache"))
 
     if args.command == "submit":
         result = _run_submit(args, client, output_dir)

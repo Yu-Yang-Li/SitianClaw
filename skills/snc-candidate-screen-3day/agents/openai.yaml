@@ -1,0 +1,4 @@
+interface:
+  display_name: "SNC 3-Day Screen"
+  short_description: "Screen the 3-day candidate list"
+  default_prompt: "Use $snc-candidate-screen-3day to run the SNC 3-day shortlist screening pipeline and summarize which recent candidates survive the workspace cuts."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "SNC FP Monitor"
+  short_description: "Monitor ZTF forced phot status"
+  default_prompt: "Use $snc-forced-phot-monitor to refresh and inspect ZTF forced-photometry request status for SNC sources."

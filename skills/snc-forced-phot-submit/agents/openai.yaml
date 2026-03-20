@@ -1,0 +1,4 @@
+interface:
+  display_name: "SNC FP Submit"
+  short_description: "Submit ZTF forced phot requests"
+  default_prompt: "Use $snc-forced-phot-submit to submit a ZTF forced-photometry request with the SNC workspace defaults."

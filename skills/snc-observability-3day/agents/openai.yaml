@@ -1,0 +1,4 @@
+interface:
+  display_name: "SNC 3-Day Observability"
+  short_description: "Forecast 3-day observability"
+  default_prompt: "Use $snc-observability-3day to evaluate the next 3 days of observability across the SNC telescope set."

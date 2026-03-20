@@ -1,0 +1,4 @@
+interface:
+  display_name: "SNC FP Fetch"
+  short_description: "Load downloaded forced photometry"
+  default_prompt: "Use $snc-forced-phot-fetch to load downloaded ZTF forced photometry for an SNC source and plot the lightcurve."
